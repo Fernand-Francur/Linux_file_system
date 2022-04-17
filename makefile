@@ -12,10 +12,13 @@ disk.o: disk.c disk.h
 
 tls_test_1.o: tls_test_1.c tls.h
 
-#tls_test_1: tls_test_1.o tls.o
-#	$(CC) $(LDFLAGS) $+ $(LOADLIBES) $(LDLIBS) -o $@
+test_disk: test_disk.o disk.o
+	$(CC) $(LDFLAGS) $+ $(LOADLIBES) $(LDLIBS) -o $@
 
-test_files=
+bitmap: bitmap.o disk.o
+	$(CC) $(LDFLAGS) $+ $(LOADLIBES) $(LDLIBS) -o $@
+
+test_files= test_disk bitmap
 
 # Run the test programs
 check: $(test_files) 
