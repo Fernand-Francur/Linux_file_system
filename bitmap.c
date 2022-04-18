@@ -25,7 +25,7 @@ int calc_off(unsigned int offset) {
 }
 
 int main() {
-  uint64_t bitmap[16];
+  uint16_t bitmap[16];
 
   unsigned int offset = 0;
   unsigned int a = calc_off(offset);
@@ -49,8 +49,10 @@ int main() {
   printf("The extracted num is %d\n", bit_ext(bitmap[a], 1, 16));
 
 
-
-  bitmap[a] = modifyBit(bitmap[a], 0, 1);
+  for (int i = 0; i < 16; i++) {
+    bitmap[a] = modifyBit(bitmap[a], i, 1);
+    printf("%d\n",bit_ext(bitmap[a], 16, 1));
+  }
   printf("Bit modified\n");
 
   printf("The extracted num is %d\n", bit_ext(bitmap[a], 1, 1));

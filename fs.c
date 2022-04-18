@@ -31,9 +31,14 @@ typedef struct dir_entry {
 
 typedef struct super_block {
   struct inode *root_inode;
+  uint16_t block_bitmap_size;
+  uint16_t block_bitmap_offset;
+  uint16_t inode_bitmap_size;
+  uint16_t inode_bitmap_offset;
+  uint16_t inode_list_offset;
+  uint16_t inode_list_size;
+  uint16_t data_blocks_offset;
   uint16_t used_blocks_count;
-  uint16_t used_blocks_offset;
-  uint16_t inode_used_count;
 } god;
 
 typedef struct file_descripter{
@@ -70,6 +75,7 @@ static uint16_t block_bitmap[DISK_BLOCKS / 16];
 static uint16_t inode_bitmap[INODE_NUMBER / 4];
 static fd fd_list[FILE_DESCRIPTOR];
 static struct inode inode_list[INODE_NUMBER];
+static god super;
 
 int make_fs(const char *disk_name) {
   if(make_disk(disk_name) != 0) {
@@ -103,9 +109,40 @@ int make_fs(const char *disk_name) {
 
   inode_list[0].FT = DIRECTORY;
   inode_list[0].direct_blocks[0] = calloc(64, sizeof(char) * 16);
-  //inode_list[SUPER_BLOCK];
-  //char *inode_bitmap;
-  //char *block_bitmap
+
+  super.root_inode = &inode_list[0];
+  super.block_bitmap_offset = sizeof(super);
+  super.block_bitmap_size = (sizeof(uint16_t) * (DISK_BLOCKS / 16));
+  super.inode_bitmap_offset = super.block_bitmap_offset + super.block_bitmap_size;
+  super.inode_bitmap_size = (sizeof(uint16_t) * (INODE_NUMBER / 4));
+  super.inode_list_offset = super.inode_bitmap_offset + super.inode_bitmap_size;
+  super.inode_list_size = sizeof(struct inode) * INODE_NUMBER;
+  super.data_blocks_offset = super.inode_list_size + super.inode_list_offset;
+  super.used_blocks_count = (super.data_blocks_offset + BLOCK_SIZE - 1) / BLOCK_SIZE;
+
+  for(int i = 0; i < super.used_blocks_count; i++) {
+    modifyBit(block_bitmap[0], i, 1);
+  }
+
+  long unsigned * buf = calloc(1, super.data_blocks_offset);
+  memcpy(buf, &super, super.block_bitmap_offset);
+  memcpy(buf + super.block_bitmap_offset, &block_bitmap, super.block_bitmap_size);
+  memcpy(buf + super.inode_bitmap_offset, &inode_bitmap, super.inode_bitmap_size);
+  memcpy(buf + super.inode_list_offset, &inode_list, super.inode_list_size);
+  long unsigned length = super.data_blocks_offset;
+  long unsigned * tmp_buf = calloc(1, BLOCK_SIZE);
+  int j = 0;
+  while(length < BLOCK_SIZE) {
+    memcpy(tmp_buf, buf + (j * BLOCK_SIZE), BLOCK_SIZE);
+    block_write(j,tmp_buf);
+    j++;
+    length = length - BLOCK_SIZE;
+  }
+  memcpy(tmp_buf, buf + (j * BLOCK_SIZE), length);
+  block_write(j,tmp_buf);
+  close_disk(disk_name);
+
+
 
   return 0;
 }
