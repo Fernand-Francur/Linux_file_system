@@ -2,7 +2,7 @@
 #define _DISK_H_
 
 /******************************************************************************/
-#define DISK_BLOCKS  16384      /* number of blocks on the disk                */
+#define DISK_BLOCKS  8192      /* number of blocks on the disk                */
 #define BLOCK_SIZE   4096      /* block size on "disk"                        */
 
 /******************************************************************************/

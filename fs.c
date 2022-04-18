@@ -16,6 +16,7 @@
 #define FILE_DESCRIPTOR 32
 #define FILE_NUM 64
 #define BLOCK_NUM 10
+#define BLOCK_SIZE 4096
 
 enum file_type {
   FILE_TYPE,
@@ -72,7 +73,7 @@ int calc_off(unsigned int offset) {
 
 static unsigned int fd_num_used;
 static uint16_t block_bitmap[DISK_BLOCKS / 16];
-static uint16_t inode_bitmap[INODE_NUMBER / 4];
+static uint16_t inode_bitmap[INODE_NUMBER / 16];
 static fd fd_list[FILE_DESCRIPTOR];
 static struct inode inode_list[INODE_NUMBER];
 static god super;
@@ -88,10 +89,17 @@ int make_fs(const char *disk_name) {
   }
   fd_num_used = 0;
   for (int i = 0; i < (DISK_BLOCKS/16); i++) {
-    block_bitmap[i] = 0;
+        for (int j = 0; j < 16; j++) {
+      block_bitmap[i] = modifyBit(block_bitmap[i], j, 1);
+      //printf("%d\n",bit_ext(block_bitmap[i], 16, 1));
+
+    }
   }
-  for (int i = 0; i < (INODE_NUMBER / 4); i++) {
-    inode_bitmap[i] = 0;
+  for (int i = 0; i < (INODE_NUMBER / 16); i++) {
+    for (int j = 0; j < 16; j++) {
+      inode_bitmap[i] = modifyBit(inode_bitmap[i], j, 1);
+      //printf("%d\n",bit_ext(inode_bitmap[i], 16, 1));
+    }
   }
   for (int i = 0; i < FILE_DESCRIPTOR; i++) {
     fd_list[i].is_used = false;
@@ -114,31 +122,34 @@ int make_fs(const char *disk_name) {
   super.block_bitmap_offset = sizeof(super);
   super.block_bitmap_size = (sizeof(uint16_t) * (DISK_BLOCKS / 16));
   super.inode_bitmap_offset = super.block_bitmap_offset + super.block_bitmap_size;
-  super.inode_bitmap_size = (sizeof(uint16_t) * (INODE_NUMBER / 4));
+  super.inode_bitmap_size = (sizeof(uint16_t) * (INODE_NUMBER / 16));
   super.inode_list_offset = super.inode_bitmap_offset + super.inode_bitmap_size;
   super.inode_list_size = sizeof(struct inode) * INODE_NUMBER;
   super.data_blocks_offset = super.inode_list_size + super.inode_list_offset;
   super.used_blocks_count = (super.data_blocks_offset + BLOCK_SIZE - 1) / BLOCK_SIZE;
-
+  
   for(int i = 0; i < super.used_blocks_count; i++) {
-    modifyBit(block_bitmap[0], i, 1);
+    block_bitmap[i] = modifyBit(block_bitmap[i], i, 1);
   }
 
   long unsigned * buf = calloc(1, super.data_blocks_offset);
   memcpy(buf, &super, super.block_bitmap_offset);
-  memcpy(buf + super.block_bitmap_offset, &block_bitmap, super.block_bitmap_size);
-  memcpy(buf + super.inode_bitmap_offset, &inode_bitmap, super.inode_bitmap_size);
-  memcpy(buf + super.inode_list_offset, &inode_list, super.inode_list_size);
-  long unsigned length = super.data_blocks_offset;
+  memcpy(buf + (super.block_bitmap_offset / 8), &block_bitmap, super.block_bitmap_size);
+  memcpy(buf + (super.inode_bitmap_offset / 8), &inode_bitmap, super.inode_bitmap_size);
+  memcpy(buf + (super.inode_list_offset / 8), &inode_list, super.inode_list_size);
+  int length = super.data_blocks_offset;
   long unsigned * tmp_buf = calloc(1, BLOCK_SIZE);
   int j = 0;
-  while(length < BLOCK_SIZE) {
-    memcpy(tmp_buf, buf + (j * BLOCK_SIZE), BLOCK_SIZE);
+  
+  while(j == 0) {
+    memcpy(tmp_buf, buf + (j * BLOCK_SIZE / 8), BLOCK_SIZE);
     block_write(j,tmp_buf);
     j++;
     length = length - BLOCK_SIZE;
   }
-  memcpy(tmp_buf, buf + (j * BLOCK_SIZE), length);
+
+
+  memcpy(tmp_buf, buf + (j * BLOCK_SIZE / 8), length);
   block_write(j,tmp_buf);
   close_disk(disk_name);
 
