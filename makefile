@@ -18,7 +18,10 @@ test_disk: test_disk.o disk.o
 bitmap: bitmap.o disk.o
 	$(CC) $(LDFLAGS) $+ $(LOADLIBES) $(LDLIBS) -o $@
 
-test_files= test_disk bitmap
+inodetest: inodetest.o disk.o
+	$(CC) $(LDFLAGS) $+ $(LOADLIBES) $(LDLIBS) -o $@
+
+test_files= test_disk bitmap inodetest
 
 # Run the test programs
 check: $(test_files) 

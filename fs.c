@@ -15,10 +15,12 @@
 #define INODE_NUMBER 64
 #define FILE_DESCRIPTOR 32
 #define FILE_NUM 64
+#define BLOCK_NUM 10
 
 enum file_type {
   FILE_TYPE,
-  DIRECTORY
+  DIRECTORY,
+  UNDEFINED
 };
 
 typedef struct dir_entry {
@@ -28,7 +30,10 @@ typedef struct dir_entry {
 } dir;
 
 typedef struct super_block {
-  int empty;
+  struct inode *root_inode;
+  uint16_t used_blocks_count;
+  uint16_t used_blocks_offset;
+  uint16_t inode_used_count;
 } god;
 
 typedef struct file_descripter{
@@ -40,9 +45,10 @@ typedef struct file_descripter{
 struct inode {
   enum file_type FT;
   unsigned int ref_count;
-
-
-
+  void *direct_blocks[BLOCK_NUM];
+  void *indirect_blocks[BLOCK_NUM];
+  unsigned int offset;
+  size_t file_size;
 };
 
 int bit_ext(uint16_t num, int k, int p) {
@@ -60,10 +66,10 @@ int calc_off(unsigned int offset) {
 }
 
 static unsigned int fd_num_used;
-static uint16_t block_list[DISK_BLOCKS / 16];
-static uint16_t inode_list[INODE_NUMBER / 4];
-//static fd fd_list[FILE_DESCRIPTOR];
-//static struct inode inode_list[INODE_NUMBER];
+static uint16_t block_bitmap[DISK_BLOCKS / 16];
+static uint16_t inode_bitmap[INODE_NUMBER / 4];
+static fd fd_list[FILE_DESCRIPTOR];
+static struct inode inode_list[INODE_NUMBER];
 
 int make_fs(const char *disk_name) {
   if(make_disk(disk_name) != 0) {
@@ -76,11 +82,27 @@ int make_fs(const char *disk_name) {
   }
   fd_num_used = 0;
   for (int i = 0; i < (DISK_BLOCKS/16); i++) {
-    block_list[i] = 0;
+    block_bitmap[i] = 0;
   }
   for (int i = 0; i < (INODE_NUMBER / 4); i++) {
-    inode_list[i] = 0;
+    inode_bitmap[i] = 0;
   }
+  for (int i = 0; i < FILE_DESCRIPTOR; i++) {
+    fd_list[i].is_used = false;
+    fd_list[i].inode_num = -1;
+    fd_list[i].offset = 0;
+  }
+
+
+  for (int i = 0; i < INODE_NUMBER; i++) {
+    inode_list[i].FT = UNDEFINED;
+    inode_list[i].ref_count = 0;
+    inode_list[i].offset = 0;
+    inode_list[i].file_size = 0;
+  }
+
+  inode_list[0].FT = DIRECTORY;
+  inode_list[0].direct_blocks[0] = calloc(64, sizeof(char) * 16);
   //inode_list[SUPER_BLOCK];
   //char *inode_bitmap;
   //char *block_bitmap
