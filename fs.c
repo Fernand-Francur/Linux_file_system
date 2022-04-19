@@ -90,14 +90,14 @@ int make_fs(const char *disk_name) {
   fd_num_used = 0;
   for (int i = 0; i < (DISK_BLOCKS/16); i++) {
         for (int j = 0; j < 16; j++) {
-      block_bitmap[i] = modifyBit(block_bitmap[i], j, 1);
+      block_bitmap[i] = modifyBit(block_bitmap[i], j, 0);
       //printf("%d\n",bit_ext(block_bitmap[i], 16, 1));
 
     }
   }
   for (int i = 0; i < (INODE_NUMBER / 16); i++) {
     for (int j = 0; j < 16; j++) {
-      inode_bitmap[i] = modifyBit(inode_bitmap[i], j, 1);
+      inode_bitmap[i] = modifyBit(inode_bitmap[i], j, 0);
       //printf("%d\n",bit_ext(inode_bitmap[i], 16, 1));
     }
   }
@@ -132,25 +132,29 @@ int make_fs(const char *disk_name) {
     block_bitmap[i] = modifyBit(block_bitmap[i], i, 1);
   }
 
-  long unsigned * buf = calloc(1, super.data_blocks_offset);
+  char * buf = calloc(super.data_blocks_offset, sizeof(char));
   memcpy(buf, &super, super.block_bitmap_offset);
-  memcpy(buf + (super.block_bitmap_offset / 8), &block_bitmap, super.block_bitmap_size);
-  memcpy(buf + (super.inode_bitmap_offset / 8), &inode_bitmap, super.inode_bitmap_size);
-  memcpy(buf + (super.inode_list_offset / 8), &inode_list, super.inode_list_size);
+  memcpy(buf + (super.block_bitmap_offset), &block_bitmap, super.block_bitmap_size);
+  memcpy(buf + (super.inode_bitmap_offset), &inode_bitmap, super.inode_bitmap_size);
+  memcpy(buf + (super.inode_list_offset), &inode_list, super.inode_list_size);
   int length = super.data_blocks_offset;
-  long unsigned * tmp_buf = calloc(1, BLOCK_SIZE);
+
+  long unsigned * tmp_buf = calloc(BLOCK_SIZE, sizeof(char));
+  
   int j = 0;
   
-  while(j == 0) {
-    memcpy(tmp_buf, buf + (j * BLOCK_SIZE / 8), BLOCK_SIZE);
+  while(length >= BLOCK_SIZE) {
+    memcpy(tmp_buf, buf + (j * BLOCK_SIZE), BLOCK_SIZE);
     block_write(j,tmp_buf);
     j++;
     length = length - BLOCK_SIZE;
   }
 
 
-  memcpy(tmp_buf, buf + (j * BLOCK_SIZE / 8), length);
+  memcpy(tmp_buf, buf + (j * BLOCK_SIZE), length);
   block_write(j,tmp_buf);
+  free(buf);
+  free(tmp_buf);
   close_disk(disk_name);
 
 

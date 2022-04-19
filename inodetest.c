@@ -91,7 +91,8 @@ int main() {
   }
 
 
-
+  free(buf);
+  free(new_buf);
   close_disk(name);
 
   return 0;

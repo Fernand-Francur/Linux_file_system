@@ -11,7 +11,7 @@
 #include "disk.h"
 
 int main() {
-    char name[10] = "newtest";
+    char name[10] = "godwhy1";
     printf("start\n");
     make_fs(name);
     printf("end\n");

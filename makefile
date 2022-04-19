@@ -6,10 +6,6 @@ fs.o: fs.h fs.c disk.o
 
 disk.o: disk.c disk.h
 
-
-
-
-
 tls_test_1.o: tls_test_1.c tls.h
 
 test_disk: test_disk.o disk.o
