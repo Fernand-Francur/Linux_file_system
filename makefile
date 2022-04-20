@@ -2,7 +2,7 @@ override CFLAGS := -Wall -Werror -std=gnu99 -pedantic -O0 -g -pthread $(CFLAGS)
 #-Wall -Werror
 override LDLIBS := -pthread $(LDLIBS)
 
-fs.o: fs.h fs.c disk.o
+fs.o: fs.h fs.c disk.o disk.c
 
 disk.o: disk.c disk.h
 

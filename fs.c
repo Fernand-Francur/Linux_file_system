@@ -77,6 +77,7 @@ static uint16_t inode_bitmap[INODE_NUMBER / 16];
 static fd fd_list[FILE_DESCRIPTOR];
 static struct inode inode_list[INODE_NUMBER];
 static god super;
+static bool mounted = false;
 
 int make_fs(const char *disk_name) {
   if(make_disk(disk_name) != 0) {
@@ -101,11 +102,7 @@ int make_fs(const char *disk_name) {
       //printf("%d\n",bit_ext(inode_bitmap[i], 16, 1));
     }
   }
-  for (int i = 0; i < FILE_DESCRIPTOR; i++) {
-    fd_list[i].is_used = false;
-    fd_list[i].inode_num = -1;
-    fd_list[i].offset = 0;
-  }
+
 
 
   for (int i = 0; i < INODE_NUMBER; i++) {
@@ -128,6 +125,7 @@ int make_fs(const char *disk_name) {
   super.data_blocks_offset = super.inode_list_size + super.inode_list_offset;
   super.used_blocks_count = (super.data_blocks_offset + BLOCK_SIZE - 1) / BLOCK_SIZE;
   
+
   for(int i = 0; i < super.used_blocks_count; i++) {
     block_bitmap[i] = modifyBit(block_bitmap[i], i, 1);
   }
@@ -139,7 +137,7 @@ int make_fs(const char *disk_name) {
   memcpy(buf + (super.inode_list_offset), &inode_list, super.inode_list_size);
   int length = super.data_blocks_offset;
 
-  long unsigned * tmp_buf = calloc(BLOCK_SIZE, sizeof(char));
+  char * tmp_buf = calloc(BLOCK_SIZE, sizeof(char));
   
   int j = 0;
   
@@ -162,9 +160,110 @@ int make_fs(const char *disk_name) {
   return 0;
 }
 int mount_fs(const char *disk_name) {
+
+  if(mounted) {
+    perror("ERROR: File system is already mounted");
+    return -1;
+  }
+
+  if (open_disk(disk_name) == -1) {
+    perror("ERROR: Invalid Disk name or disk is already open");
+    return -1;
+  }
+
+  god new_sup;
+
+  char * tmp_buf = calloc(BLOCK_SIZE, sizeof(char));
+
+  block_read(0, tmp_buf);
+  memcpy(&new_sup, tmp_buf, sizeof(new_sup));
+
+  printf("\nsize of block_bitmap_offset = %d\n", new_sup.block_bitmap_offset );
+  printf("size of block_bitmap_size = %d\n", new_sup.block_bitmap_size );
+  printf("size of inode bitmap = %d\n", new_sup.inode_bitmap_size );
+  printf("size of inode_bitmap_offset = %d\n", new_sup.inode_bitmap_offset );
+  printf("size of inode_list_offset = %d\n", new_sup.inode_list_offset );
+
+  if ((new_sup.block_bitmap_offset != sizeof(new_sup)) ) {
+    perror("ERROR: Invalid super block");
+    return -1;
+  }
+
+
+
+  char * buf = calloc(new_sup.data_blocks_offset, sizeof(char));
+
+  int length = super.data_blocks_offset;
+  int j = 0;
+  
+  while(length >= BLOCK_SIZE) {
+    block_read(j,tmp_buf);
+    memcpy(buf + (j * BLOCK_SIZE), tmp_buf, BLOCK_SIZE);
+    j++;
+    length = length - BLOCK_SIZE;
+  }
+
+  block_read(j,tmp_buf);
+  memcpy(buf + (j * BLOCK_SIZE), tmp_buf, length);
+
+  memcpy(&super, buf, new_sup.block_bitmap_offset);
+  memcpy(&block_bitmap, buf + (super.block_bitmap_offset) , super.block_bitmap_size);
+  memcpy(&inode_bitmap, buf + (super.inode_bitmap_offset), super.inode_bitmap_size);
+  memcpy(&inode_list, buf + (super.inode_list_offset), super.inode_list_size);  
+
+  for (int i = 0; i < FILE_DESCRIPTOR; i++) {
+    fd_list[i].is_used = false;
+    fd_list[i].inode_num = -1;
+    fd_list[i].offset = 0;
+  }
+
+  free(tmp_buf);
+  free(buf);
+  mounted = true;
   return 0;
 }
 int umount_fs(const char *disk_name) {
+
+  if(!mounted) {
+    perror("ERROR: File system is not mounted. Cannot umount");
+    return -1;
+  }
+  char * tmp_buf = calloc(BLOCK_SIZE, sizeof(char));
+  if(block_read(0,tmp_buf) == -1) {
+    perror("ERROR: Disk is not open");
+    return -1;
+  }
+  god new_sup;
+
+  memcpy(&new_sup, tmp_buf, sizeof(new_sup));
+  if ((new_sup.block_bitmap_offset != sizeof(new_sup)) ) {
+    perror("ERROR: Invalid super block");
+    return -1;
+  }
+
+  char * buf = calloc(super.data_blocks_offset, sizeof(char));
+  memcpy(buf, &super, super.block_bitmap_offset);
+  memcpy(buf + (super.block_bitmap_offset), &block_bitmap, super.block_bitmap_size);
+  memcpy(buf + (super.inode_bitmap_offset), &inode_bitmap, super.inode_bitmap_size);
+  memcpy(buf + (super.inode_list_offset), &inode_list, super.inode_list_size);
+  int length = super.data_blocks_offset;
+  int j = 0;
+  
+  while(length >= BLOCK_SIZE) {
+    memcpy(tmp_buf, buf + (j * BLOCK_SIZE), BLOCK_SIZE);
+    block_write(j,tmp_buf);
+    j++;
+    length = length - BLOCK_SIZE;
+  }
+
+
+  memcpy(tmp_buf, buf + (j * BLOCK_SIZE), length);
+  block_write(j,tmp_buf);
+  free(buf);
+  free(tmp_buf);
+  close_disk(disk_name);
+  mounted = false;
+
   return 0;
 }
 int fs_open(const char *name) {

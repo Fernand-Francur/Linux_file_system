@@ -14,6 +14,8 @@ int main() {
     char name[10] = "godwhy1";
     printf("start\n");
     make_fs(name);
+    mount_fs(name);
+    umount_fs(name);
     printf("end\n");
   return 0;
 }
