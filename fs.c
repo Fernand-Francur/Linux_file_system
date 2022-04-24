@@ -167,12 +167,14 @@ int make_fs(const char *disk_name) {
   block_write(j,tmp_buf);
   j++;
 
-  memcpy(tmp_buf, &entries, sizeof(entries));
+  char * tmp_buf2 = calloc(BLOCK_SIZE, sizeof(char));
+  memcpy(tmp_buf2, &entries, sizeof(entries));
   
-  block_write(j, tmp_buf);
+  block_write(j, tmp_buf2);
 
   free(buf);
   free(tmp_buf);
+  free(tmp_buf2);
   close_disk(disk_name);
   return 0;
 }
@@ -234,12 +236,13 @@ int mount_fs(const char *disk_name) {
     fd_list[i].inode_num = -1;
     fd_list[i].offset = 0;
   }
-  
-  block_read(2, tmp_buf);
+  char * tmp_buf2 = calloc(BLOCK_SIZE, sizeof(char));
+  block_read(3, tmp_buf2);
 
-  memcpy(&entries, tmp_buf, sizeof(entries));
+  memcpy(&entries, tmp_buf2, sizeof(entries));
 
   free(tmp_buf);
+  free(tmp_buf2);
   free(buf);
   mounted = true;
   return 0;
