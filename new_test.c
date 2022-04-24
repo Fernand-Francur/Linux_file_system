@@ -9,15 +9,19 @@
 #include "disk.h"
 
 int main() {
-    char name[10] = "testingW";
+    char name[10] = "cursed";
     char file_name1[16] = "fudgefile";
-    close_disk(name);
-    umount_fs(name);
+    //close_disk(name);
+    //umount_fs(name);
     printf("start\n");
 
 
     make_fs(name);
     mount_fs(name);
+
+
+
+    fs_create(file_name1);
     fs_create(file_name1);
     umount_fs(name);
 

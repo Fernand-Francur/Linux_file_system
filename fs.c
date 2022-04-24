@@ -167,7 +167,9 @@ int make_fs(const char *disk_name) {
   block_write(j,tmp_buf);
   j++;
 
-  block_write(j, &entries);
+  memcpy(tmp_buf, &entries, sizeof(entries));
+  
+  block_write(j, tmp_buf);
 
   free(buf);
   free(tmp_buf);
@@ -232,8 +234,10 @@ int mount_fs(const char *disk_name) {
     fd_list[i].inode_num = -1;
     fd_list[i].offset = 0;
   }
+  
+  block_read(2, tmp_buf);
 
-  block_read(2, &entries);
+  memcpy(&entries, tmp_buf, sizeof(entries));
 
   free(tmp_buf);
   free(buf);
@@ -285,7 +289,7 @@ int umount_fs(const char *disk_name) {
   return 0;
 }
 int fs_open(const char *name) {
-  int unused_fd = 33;
+  /* int unused_fd = 33;
   for (int j = 0; j < FILE_DESCRIPTOR; j++) {
     if(fd_list[j].is_used == false) {
       unused_fd = j;
@@ -298,7 +302,7 @@ int fs_open(const char *name) {
   }
   return 0;
 }
-int fs_close(int fildes) {
+int fs_close(int fildes) {*/
   return 0;
 }
 
@@ -314,8 +318,8 @@ int fs_create(const char *name) {
 
   
   for (int i = 0; i < FILE_NUM; i++) {
-    if (entries[0].is_used == true) {
-      if(strcmp(entries[i].name, name) == 1) {
+    if (entries[i].is_used == true) {
+      if(strcmp(entries[i].name, name) == 0) {
         perror("ERROR: Filename already exists");
         return -1;
       }
