@@ -79,6 +79,7 @@ static fd fd_list[FILE_DESCRIPTOR];
 static struct inode inode_list[INODE_NUMBER];
 static god super;
 static bool mounted = false;
+static dir entries[FILE_NUM];
 
 int make_fs(const char *disk_name) {
   if(make_disk(disk_name) != 0) {
@@ -103,6 +104,7 @@ int make_fs(const char *disk_name) {
       //printf("%d\n",bit_ext(inode_bitmap[i], 16, 1));
     }
   }
+  inode_bitmap[0] = modifyBit(inode_bitmap[0], 0, 1);
 
 
 
@@ -113,11 +115,9 @@ int make_fs(const char *disk_name) {
     inode_list[i].file_size = 0;
   }
 
-  dir entries[FILE_NUM];
-
   for (int i = 0; i < FILE_NUM; i++) {
     entries[i].is_used = false;
-    entries[i].inode_number = -1;
+    entries[i].inode_number = 0;
     strncpy(entries[i].name, "\0", STRING_LEN);
   }
 
@@ -136,15 +136,13 @@ int make_fs(const char *disk_name) {
   super.inode_list_size = sizeof(struct inode) * INODE_NUMBER;
   super.data_blocks_offset = super.inode_list_size + super.inode_list_offset;
   super.used_blocks_count = (super.data_blocks_offset + BLOCK_SIZE - 1) / BLOCK_SIZE + 1;
-  
-
   //for(int i = 0; i <= super.used_blocks_count; i++) {
   block_bitmap[0] = modifyBit(block_bitmap[0], 0, 1);
   block_bitmap[0] = modifyBit(block_bitmap[0], 1, 1);
   block_bitmap[0] = modifyBit(block_bitmap[0], 2, 1);
   block_bitmap[0] = modifyBit(block_bitmap[0], 3, 1);
   block_bitmap[0] = modifyBit(block_bitmap[0], 4, 1);
-  
+
 
   char * buf = calloc(super.data_blocks_offset, sizeof(char));
   memcpy(buf, &super, super.block_bitmap_offset);
@@ -235,6 +233,8 @@ int mount_fs(const char *disk_name) {
     fd_list[i].offset = 0;
   }
 
+  block_read(2, &entries);
+
   free(tmp_buf);
   free(buf);
   mounted = true;
@@ -285,14 +285,14 @@ int umount_fs(const char *disk_name) {
   return 0;
 }
 int fs_open(const char *name) {
-  int unused_fd = -1;
+  int unused_fd = 33;
   for (int j = 0; j < FILE_DESCRIPTOR; j++) {
     if(fd_list[j].is_used == false) {
       unused_fd = j;
       break;
     }
   }
-  if (unused_fd == -1) {
+  if (unused_fd == 33) {
     perror("ERROR: All file file_descripters are busy. Close a file");
     return -1;
   }
@@ -310,10 +310,9 @@ int fs_create(const char *name) {
     perror("ERROR: Name size out of bounds");
     return -1;
   }
-  int unused = -1;
+  int unused = 65;
 
-  dir entries[FILE_NUM];
-  block_read(2, &entries);
+  
   for (int i = 0; i < FILE_NUM; i++) {
     if (entries[0].is_used == true) {
       if(strcmp(entries[i].name, name) == 1) {
@@ -322,27 +321,28 @@ int fs_create(const char *name) {
       }
     } else {
       unused = i;
+      break;
     }
   }
-  if (unused == -1) {
+  if (unused == 65) {
     perror("ERROR: Too many files created. Delete a file to make a new one");
     return -1;
   }
-  int unused_inode_in_index = -1;
+  int unused_inode_in_index = 65;
   int inode_index = 0;
   for (int i = 0; i < (INODE_NUMBER / 16); i++) {
-    for(int j = 0; j < 16; j++) {
+    for(int j = 1; j < 17; j++) {
       if (bit_ext(inode_bitmap[i],1,j) == 0) {
         unused_inode_in_index = j;
         inode_index = i;
         break;
       }
-      if (unused_inode_in_index != -1) {
+    }
+    if (unused_inode_in_index != 65) {
         break;
-      }
     }
   }
-  if (unused_inode_in_index == -1) {
+  if (unused_inode_in_index == 65) {
     perror("ERROR: No available inodes. Delete a file");
     return -1;
   }
@@ -350,7 +350,7 @@ int fs_create(const char *name) {
   strncpy(entries[unused].name,name, strlen(name) + 1);;
   entries[unused].is_used = true;
   entries[unused].inode_number = inode_index * 16 + unused_inode_in_index;
-  inode_bitmap[inode_index] = modifyBit(inode_bitmap[inode_index], unused_inode_in_index, 1);
+  inode_bitmap[inode_index] = modifyBit(inode_bitmap[inode_index], unused_inode_in_index - 1, 1);
   inode_list[entries[unused].inode_number].FT = FILE_TYPE;
 
   return 0;

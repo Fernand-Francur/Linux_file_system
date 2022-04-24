@@ -1,8 +1,8 @@
 override CFLAGS := -Wall -Werror -std=gnu99 -pedantic -O0 -g -pthread $(CFLAGS)
 #-Wall -Werror
-override LDLIBS := -pthread $(LDLIBS)
+override LDLIBS := $(LDLIBS)
 
-fs.o: fs.h fs.c disk.o disk.c
+fs.o: fs.h fs.c disk.o
 
 disk.o: disk.c disk.h
 
@@ -17,10 +17,10 @@ bitmap: bitmap.o disk.o
 inodetest: inodetest.o disk.o
 	$(CC) $(LDFLAGS) $+ $(LOADLIBES) $(LDLIBS) -o $@
 
-make_test: make_test.o disk.o
+new_test: new_test.o disk.o
 	$(CC) $(LDFLAGS) $+ $(LOADLIBES) $(LDLIBS) -o $@
 
-test_files= test_disk bitmap inodetest make_test
+test_files=  new_test #test_disk bitmap inodetest
 
 # Run the test programs
 check: $(test_files) 
