@@ -443,6 +443,9 @@ int fs_delete(const char *name) {
       for( int j = 0; j < (BLOCK_SIZE / sizeof(uint16_t)); j++) {
 	if(ind_block[j] != 0) {
 	  block_write(j, clean);
+	  int bitmap_index = ind_block[j] / 16;
+	  int bit = ind_block[j] - 16 * bitmap_index;
+	  block_bitmap[bitmap_index] = modifyBit(block_bitmap[bitmap_index], bit, 0);
 	}
       }
       free(tmp_buf);
@@ -454,11 +457,24 @@ int fs_delete(const char *name) {
   for(int i = 0; i < BLOCK_NUM; i++) {
     if (inode_list[inode_num].direct_blocks[i] != 0) {
       block_write(i, clean);
+      int bitmap_index = inode_list[inode_num].direct_blocks[i] / 16;
+      int bit = inode_list[inode_num].direct_blocks[i] - 16 * bitmap_index;
+      block_bitmap[bitmap_index] = modifyBit(block_bitmap[bitmap_index], bit, 0);
       inode_list[inode_num].direct_blocks[i] = 0;
     }
   }
 
-  
+  inode_list[inode_num].FT = UNDEFINED;
+  inode_list[inode_num].ref_count = 0;
+  inode_list[inode_num].offset = 0;
+  inode_list[inode_num].file_size = 0;
+  int inode_index = inode_num / 16;
+  int bit = inode_num - 16 * inode_index;
+  inode_bitmap[inode_index] = modifyBit(inode_bitmap[inode_index], bit, 0);
+
+  strncpy(entries[entry].name, "\0", STRING_LEN);
+  entries[entry].is_used = false;
+  entries[entry].inode_number = 0;
   
   free(clean);
   return 0;
