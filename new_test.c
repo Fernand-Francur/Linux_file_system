@@ -52,7 +52,9 @@ int main() {
     fs_create(file_name14);
     fs_create(file_name15);
     fs_create(file_name16);
-    
+    int fd = fs_open(file_name2);
+    fs_close(fd);
+    fs_close(fd);
     fs_create(file_name1);
     umount_fs(name);
 

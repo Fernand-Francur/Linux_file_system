@@ -284,15 +284,37 @@ int umount_fs(const char *disk_name) {
 
   memcpy(tmp_buf, buf + (j * BLOCK_SIZE), length);
   block_write(j,tmp_buf);
+  j++;
+  char * tmp_buf2 = calloc(BLOCK_SIZE, sizeof(char));
+  memcpy(tmp_buf2, &entries, sizeof(entries));
+  block_write(j, tmp_buf2);
+  
   free(buf);
   free(tmp_buf);
+  free(tmp_buf2);
   close_disk(disk_name);
   mounted = false;
 
   return 0;
 }
 int fs_open(const char *name) {
-  /* int unused_fd = 33;
+
+  int entry = 1000;
+  
+  for (int i = 0; i < FILE_NUM; i++) {
+    if (entries[i].is_used == true) {
+      if(strcmp(entries[i].name, name) == 0) {
+	entry = i;
+	break;
+      }
+    }
+  }
+  if (entry == 1000) {
+    perror("ERROR: No such file exists with this name");
+    return -1;
+  }
+
+  int unused_fd = 33;
   for (int j = 0; j < FILE_DESCRIPTOR; j++) {
     if(fd_list[j].is_used == false) {
       unused_fd = j;
@@ -303,9 +325,34 @@ int fs_open(const char *name) {
     perror("ERROR: All file file_descripters are busy. Close a file");
     return -1;
   }
-  return 0;
-}
-int fs_close(int fildes) {*/
+
+  
+  fd_list[unused_fd].is_used = true;
+  fd_list[unused_fd].inode_num = entries[entry].inode_number;
+  fd_list[unused_fd].offset = 0;
+
+  inode_list[entries[entry].inode_number].ref_count++;
+
+  return unused_fd;
+} 
+
+int fs_close(int fildes) {
+  if ((fildes < 0) || (fildes > 31)) {
+    perror("ERROR: File descriptor out of range");
+    return -1;
+  }
+  if (fd_list[fildes].is_used == false) {
+    perror("ERROR: File descriptor is not open");
+    return -1;
+  }
+  fd_list[fildes].offset = 0;
+
+  inode_list[fd_list[fildes].inode_num].ref_count--;
+  fd_list[fildes].inode_num = -1;
+  
+  fd_list[fildes].is_used = false;
+
+
   return 0;
 }
 
