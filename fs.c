@@ -432,6 +432,15 @@ int fs_delete(const char *name) {
     return -1;
   }
 
+  for(int i = 0; i < FILE_DESCRIPTOR; i++) {
+    if(fd_list[i].is_used == true) {
+      if(fd_list[i].inode_num == inode_num) {
+	perror("ERROR: Cannot delete, file is open");
+	return -1;
+      }
+    }
+  }
+
   char * clean = calloc(BLOCK_SIZE, sizeof(char));
   
   for(int i = 0; i < BLOCK_NUM; i++) {
