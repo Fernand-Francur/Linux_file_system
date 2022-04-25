@@ -511,9 +511,29 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
     perror("ERROR: File descriptor is not open");
     return -1;
   }
+
+  int inode_num = fd_list[fildes].inode_num;
+  int size_of_file = inode_list[inode_num].file_size;
+  int append_size = 0;
+  int length = nbyte;
+  int overflow = 0;
   
+  if(fd_list[fildes].offset + nbyte > size_of_file) {
+    append_size = fd_list[fildes].offset + nbyte - size_of_file;
+  }
+
+  int how_much_append = (append_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+  if (how_much_append + super.used_blocks_count > 8192) {
+    overflow = how_much_append + super.used_blocks_count - 8192;
+  }
+  char * tmp_buf = calloc(BLOCK_SIZE, sizeof(char));
+
+  int j = 0;
+   
+
   
-  return 0;
+  free(tmp_buf);
+  return nbyte - length;
 }
 
 
