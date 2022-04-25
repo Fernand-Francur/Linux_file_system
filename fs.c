@@ -410,6 +410,57 @@ int fs_create(const char *name) {
   return 0;
 }
 int fs_delete(const char *name) {
+
+  int entry = 1000;
+
+  for (int i = 0; i < FILE_NUM; i++) {
+    if (entries[i].is_used == true) {
+      if(strcmp(entries[i].name, name) == 0) {
+	entry = i;
+	break;
+      }
+    }
+  }
+  if (entry == 1000) {
+    perror("ERROR: No such file exists with this name");
+    return -1;
+  }
+
+  int inode_num = entries[entry].inode_number;
+  if (inode_list[inode_num].ref_count != 0) {
+    perror("ERROR: Cannot delete, file is open");
+    return -1;
+  }
+
+  char * clean = calloc(BLOCK_SIZE, sizeof(char));
+  
+  for(int i = 0; i < BLOCK_NUM; i++) {
+    if (inode_list[inode_num].indirect_blocks[i] != 0) {
+      char * tmp_buf = calloc(BLOCK_SIZE, sizeof(char));
+      uint16_t ind_block[BLOCK_SIZE / sizeof(uint16_t)];
+      block_read(inode_list[inode_num].indirect_blocks[i], tmp_buf);
+      memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
+      for( int j = 0; j < (BLOCK_SIZE / sizeof(uint16_t)); j++) {
+	if(ind_block[j] != 0) {
+	  block_write(j, clean);
+	}
+      }
+      free(tmp_buf);
+      block_write(inode_list[inode_num].indirect_blocks[i], clean);
+      inode_list[inode_num].indirect_blocks[i] = 0;
+    }
+  }
+
+  for(int i = 0; i < BLOCK_NUM; i++) {
+    if (inode_list[inode_num].direct_blocks[i] != 0) {
+      block_write(i, clean);
+      inode_list[inode_num].direct_blocks[i] = 0;
+    }
+  }
+
+  
+  
+  free(clean);
   return 0;
 }
 int fs_read(int fildes, void *buf, size_t nbyte) {
