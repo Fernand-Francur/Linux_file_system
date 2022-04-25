@@ -488,21 +488,81 @@ int fs_delete(const char *name) {
   free(clean);
   return 0;
 }
+
+
 int fs_read(int fildes, void *buf, size_t nbyte) {
+  if ((fildes < 0) || (fildes > 31)) {
+    perror("ERROR: File descriptor out of range");
+    return -1;
+  }
+  if (fd_list[fildes].is_used == false) {
+    perror("ERROR: File descriptor is not open");
+    return -1;
+  }
+
   return 0;
 }
 int fs_write(int fildes, void *buf, size_t nbyte) {
+  if ((fildes < 0) || (fildes > 31)) {
+    perror("ERROR: File descriptor out of range");
+    return -1;
+  }
+  if (fd_list[fildes].is_used == false) {
+    perror("ERROR: File descriptor is not open");
+    return -1;
+  }
+  
+  
   return 0;
 }
+
+
 int fs_get_filesize(int fildes) {
-  return 0;
+  if ((fildes < 0) || (fildes > 31)) {
+    perror("ERROR: File descriptor out of range");
+    return -1;
+  }
+  if (fd_list[fildes].is_used == false) {
+    perror("ERROR: File descriptor is not open");
+    return -1;
+  }
+  
+  return inode_list[fd_list[fildes].inode_num].file_size;
 }
+
+
 int fs_listfiles(char ***files) {
   return 0;
 }
 int fs_lseek(int fildes, off_t offset) {
+  if ((fildes < 0) || (fildes > 31)) {
+    perror("ERROR: File descriptor out of range");
+    return -1;
+  }
+  if (fd_list[fildes].is_used == false) {
+    perror("ERROR: File descriptor is not open");
+    return -1;
+  }
+  int size_of_file = inode_list[fd_list[fildes].inode_num].file_size;
+  if ((offset < 0) || (offset > size_of_file)) {
+    perror("ERROR: lseek offsets outside of parameters of file");
+    return -1;
+  }
+
+  fd_list[fildes].offset = offset;
+  inode_list[fd_list[fildes].inode_num].offset = offset / BLOCK_SIZE;
+
   return 0;
 }
 int fs_truncate(int fildes, off_t length) {
+  if ((fildes < 0) || (fildes > 31)) {
+    perror("ERROR: File descriptor out of range");
+    return -1;
+  }
+  if (fd_list[fildes].is_used == false) {
+    perror("ERROR: File descriptor is not open");
+    return -1;
+  }
+
   return 0;
 }
