@@ -513,10 +513,12 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
   }
 
   int inode_num = fd_list[fildes].inode_num;
+  int current_block = inode_list[inode_num].offset;
   int size_of_file = inode_list[inode_num].file_size;
   int append_size = 0;
   int length = nbyte;
   int overflow = 0;
+  int length_without_appending = 0;
   
   if(fd_list[fildes].offset + nbyte > size_of_file) {
     append_size = fd_list[fildes].offset + nbyte - size_of_file;
@@ -526,11 +528,27 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
   if (how_much_append + super.used_blocks_count > 8192) {
     overflow = how_much_append + super.used_blocks_count - 8192;
   }
+  how_much_append = how_much_append - overflow;
+
   char * tmp_buf = calloc(BLOCK_SIZE, sizeof(char));
 
-  int j = 0;
-   
+  length_without_appending = length - append_size;
 
+  int offset_in_current_block = fd_list[fildes].offset;
+
+  while (offset_in_current_block > 4095) {
+    offset_in_current_block = offset_in_current_block - 4096;
+  }
+
+  int space_in_current_block = BLOCK_SIZE - offset_in_current_block;
+
+  
+  if (space_in_current_block != 0) {
+    
+
+  }
+  
+  int j = 0;
   
   free(tmp_buf);
   return nbyte - length;
