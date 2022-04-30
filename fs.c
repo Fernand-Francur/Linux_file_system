@@ -72,6 +72,17 @@ int calc_off(unsigned int offset) {
   return offset / 16;
 }
 
+int find_free_bit(uint16_t n) {
+  int free_bit = 0;
+  for (int i = 1; i < 17; i++) {
+    if (bit_ext(n, 1, i+1) == 0) {
+      free_bit = i;
+      break;
+    }
+  }
+  return free_bit;
+}
+
 static unsigned int fd_num_used;
 static uint16_t block_bitmap[DISK_BLOCKS / 16];
 static uint16_t inode_bitmap[INODE_NUMBER / 16];
@@ -446,10 +457,10 @@ int fs_delete(const char *name) {
   for(int i = 0; i < BLOCK_NUM; i++) {
     if (inode_list[inode_num].indirect_blocks[i] != 0) {
       char * tmp_buf = calloc(BLOCK_SIZE, sizeof(char));
-      uint16_t ind_block[BLOCK_SIZE / sizeof(uint16_t)];
+      int ind_block[BLOCK_SIZE / sizeof(int)];
       block_read(inode_list[inode_num].indirect_blocks[i], tmp_buf);
       memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
-      for( int j = 0; j < (BLOCK_SIZE / sizeof(uint16_t)); j++) {
+      for( int j = 0; j < (BLOCK_SIZE / sizeof(int)); j++) {
 	if(ind_block[j] != 0) {
 	  block_write(j, clean);
 	  int bitmap_index = ind_block[j] / 16;
@@ -541,7 +552,83 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
   }
 
   int space_in_current_block = BLOCK_SIZE - offset_in_current_block;
+  int current_indirect = 0;
+  bool start_in_indirect = false;
+  int ind_block[BLOCK_SIZE / sizeof(int)];
+  int original_block_start = current_block;
+  char * tmp_buf2 = calloc(BLOCK_SIZE, sizeof(char));
+  
+  if (current_block > 9) {
+    current_block = current_block - 10;
+    start_in_indirect = true;
+    while (current_block > 1023) {
+      current_block = current_block - 1024;
+      current_indirect++;
+    }
+  }
+  if (length > space_in_current_block) {
+    memcpy(tmp_buf2 + offset_in_current_block, buf, space_in_current_block);
+  
+    if (start_in_indirect) {
+      block_read(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
+      memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
+      block_write(ind_block[current_block], tmp_buf2);
+    } else {
+      block_write(inode_list[inode_num].direct_blocks[original_block_start], tmp_buf2);
+    }
+    
+    length = length - space_in_current_block;
 
+    while (length > BLOCK_SIZE) {
+      current_block = current_block + 1;
+      int before_mod = current_block;
+      if ((current_block > 9) && (!start_in_indirect) ) {
+	current_block = current_block - 10;
+	start_in_indirect = true;
+	if (inode_list[inode_num].indirect_blocks[current_indirect] == 0) {
+	  bool free_bit_found = false;
+	  for (int j = 0; j < (DISK_BLOCKS / 16); j++) {
+	    int internal_bit = find_free_bit(block_bitmap[j]);
+	    if (internal_bit != 0) {
+	      internal_bit--;
+	      block_bitmap[j] = modifyBit(block_bitmap[j], internal_bit, 1);
+	      inode_list[inode_num].indirect_blocks[current_indirect] = j*16 + internal_bit;
+	      free_bit_found = true;
+	      break;
+	    }
+	  }
+	  if (free_bit_found == false) {
+	    printf("No free bit found");
+	    return nbyte - length;
+	  }
+	  free_bit_found = false;
+	  for (int j = 0; j < (DISK_BLOCKS / 16); j++) {
+	    int internal_bit = find_free_bit(block_bitmap[j]);
+	    if (internal_bit != 0) {
+	      internal_bit--;
+	      block_bitmap[j] = modifyBit(block_bitmap[j], internal_bit, 1);
+	      block_read(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
+	      memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
+	      ind_block[0] = j*16 + internal_bit;
+	      memcpy( tmp_buf, &ind_block, BLOCK_SIZE);
+	      block_write(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
+	      free_bit_found = true;
+	      break;
+	    }
+	  }
+	}
+      } else if ((current_block > 1023) && (start_in_indirect)) {
+	current_block = current_block - 1024;
+	current_indirect++;
+      }
+      if (current_block != before_mod) {
+	block_read(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
+	memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
+      }
+    }
+    
+  } 
+  
   
   if (space_in_current_block != 0) {
     
@@ -549,7 +636,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
   }
   
   int j = 0;
-  
+  free(tmp_buf2);
   free(tmp_buf);
   return nbyte - length;
 }
