@@ -513,6 +513,11 @@ int fs_read(int fildes, void *buf, size_t nbyte) {
 
   return 0;
 }
+
+
+
+
+
 int fs_write(int fildes, void *buf, size_t nbyte) {
   if ((fildes < 0) || (fildes > 31)) {
     perror("ERROR: File descriptor out of range");
@@ -588,6 +593,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	    printf("No free bit found");
 	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	    inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
+	    inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
 	    return nbyte - length;
 	  }
 	  free_bit_found = false;
@@ -609,6 +615,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	    printf("No free bit found");
 	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	    inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
+	    inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
 	    return nbyte - length;
 	  }
 	}
@@ -632,6 +639,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	    printf("No free bit found");
 	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	    inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
+	    inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
 	    return nbyte - length;
 	  }
 	  free_bit_found = false;
@@ -694,6 +702,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	  printf("No free bit found");
 	  fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	  inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
+	  inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
 	  return nbyte - length;
 	}
 	free_bit_found = false;
@@ -715,6 +724,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	  printf("No free bit found");
 	  fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	  inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
+	  inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
 	  return nbyte - length;
 	}
       }
@@ -738,6 +748,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	  printf("No free bit found");
 	  fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	  inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
+	  inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
 	  return nbyte - length;
 	}
 	free_bit_found = false;
@@ -787,7 +798,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 
   fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
   inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
-  
+  inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
   return nbyte - length;
 }
 
