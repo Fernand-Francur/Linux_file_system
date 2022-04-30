@@ -586,6 +586,8 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	  }
 	  if (free_bit_found == false) {
 	    printf("No free bit found");
+	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
+	    inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
 	    return nbyte - length;
 	  }
 	  free_bit_found = false;
@@ -605,6 +607,8 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	  }
 	  if (free_bit_found == false) {
 	    printf("No free bit found");
+	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
+	    inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
 	    return nbyte - length;
 	  }
 	}
@@ -626,6 +630,8 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	  }
 	  if (free_bit_found == false) {
 	    printf("No free bit found");
+	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
+	    inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
 	    return nbyte - length;
 	  }
 	  free_bit_found = false;
@@ -686,6 +692,8 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	}
 	if (free_bit_found == false) {
 	  printf("No free bit found");
+	  fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
+	  inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
 	  return nbyte - length;
 	}
 	free_bit_found = false;
@@ -705,6 +713,8 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	}
 	if (free_bit_found == false) {
 	  printf("No free bit found");
+	  fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
+	  inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
 	  return nbyte - length;
 	}
       }
@@ -726,6 +736,8 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	}
 	if (free_bit_found == false) {
 	  printf("No free bit found");
+	  fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
+	  inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
 	  return nbyte - length;
 	}
 	free_bit_found = false;
@@ -753,7 +765,9 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
     } else {
       memcpy(tmp_buf2, ari_buf + length_copied, length);
       block_write(inode_list[inode_num].direct_blocks[current_block], tmp_buf2);
-    }  
+    }
+    length_copied = length_copied + length;
+    length = 0;
   } else {
     memcpy(tmp_buf2 + offset_in_current_block, buf, length);
     if (start_in_indirect) {
@@ -763,12 +777,17 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
     } else {
       block_write(inode_list[inode_num].direct_blocks[original_block_start], tmp_buf2);
     }
+    length = 0;
   }
   
   
   
   free(tmp_buf2);
   free(tmp_buf);
+
+  fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
+  inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
+  
   return nbyte - length;
 }
 
