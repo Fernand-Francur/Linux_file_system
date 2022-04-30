@@ -522,29 +522,15 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
     perror("ERROR: File descriptor is not open");
     return -1;
   }
-
+  char * ari_buf = (char *) buf;
   int inode_num = fd_list[fildes].inode_num;
   int current_block = inode_list[inode_num].offset;
-  int size_of_file = inode_list[inode_num].file_size;
-  int append_size = 0;
-  int length = nbyte;
-  int overflow = 0;
-  int length_without_appending = 0;
   
-  if(fd_list[fildes].offset + nbyte > size_of_file) {
-    append_size = fd_list[fildes].offset + nbyte - size_of_file;
-  }
-
-  int how_much_append = (append_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
-  if (how_much_append + super.used_blocks_count > 8192) {
-    overflow = how_much_append + super.used_blocks_count - 8192;
-  }
-  how_much_append = how_much_append - overflow;
-
+  int length = nbyte;
+  
   char * tmp_buf = calloc(BLOCK_SIZE, sizeof(char));
 
-  length_without_appending = length - append_size;
-
+  
   int offset_in_current_block = fd_list[fildes].offset;
 
   while (offset_in_current_block > 4095) {
@@ -662,26 +648,125 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
       if (current_block != before_mod) {
 	block_read(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
 	memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
-	memcpy(tmp_buf2, buf + length_copied, BLOCK_SIZE);
+	memcpy(tmp_buf2, ari_buf + length_copied, BLOCK_SIZE);
 	block_write(ind_block[current_block], tmp_buf2);
       } else {
-	memcpy(tmp_buf2, buf + length_copied, BLOCK_SIZE);
-	block_write(inode_list[inode_num].direct_blocks[current_block], tmp_buf2);
+	memcpy(tmp_buf2, ari_buf + length_copied, BLOCK_SIZE);
+	if (start_in_indirect) {
+	  block_read(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
+	  memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
+	  block_write(ind_block[current_block], tmp_buf2);
+	} else {
+	  block_write(inode_list[inode_num].direct_blocks[current_block], tmp_buf2);
+	}
       }
+	
       length_copied = length_copied + BLOCK_SIZE;
       current_block++;
       length = length - BLOCK_SIZE;
     }
-    
-  } 
-  
-  
-  if (space_in_current_block != 0) {
-    
 
+
+
+    int before_mod = current_block;
+    if ((current_block > 9) && (!start_in_indirect) ) {
+      current_block = current_block - 10;
+      start_in_indirect = true;
+      if (inode_list[inode_num].indirect_blocks[current_indirect] == 0) {
+	bool free_bit_found = false;
+	for (int j = 0; j < (DISK_BLOCKS / 16); j++) {
+	  int internal_bit = find_free_bit(block_bitmap[j]);
+	  if (internal_bit != 0) {
+	    internal_bit--;
+	    block_bitmap[j] = modifyBit(block_bitmap[j], internal_bit, 1);
+	    inode_list[inode_num].indirect_blocks[current_indirect] = j*16 + internal_bit;
+	    free_bit_found = true;
+	    break;
+	  }
+	}
+	if (free_bit_found == false) {
+	  printf("No free bit found");
+	  return nbyte - length;
+	}
+	free_bit_found = false;
+	for (int j = 0; j < (DISK_BLOCKS / 16); j++) {
+	  int internal_bit = find_free_bit(block_bitmap[j]);
+	  if (internal_bit != 0) {
+	    internal_bit--;
+	    block_bitmap[j] = modifyBit(block_bitmap[j], internal_bit, 1);
+	    block_read(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
+	    memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
+	    ind_block[0] = j*16 + internal_bit;
+	    memcpy( tmp_buf, &ind_block, BLOCK_SIZE);
+	    block_write(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
+	    free_bit_found = true;
+	    break;
+	  }
+	}
+	if (free_bit_found == false) {
+	  printf("No free bit found");
+	  return nbyte - length;
+	}
+      }
+    } else if ((current_block > 1023) && (start_in_indirect)) {
+      current_block = current_block - 1024;
+      current_indirect++;
+
+      if (inode_list[inode_num].indirect_blocks[current_indirect] == 0) {
+	bool free_bit_found = false;
+	for (int j = 0; j < (DISK_BLOCKS / 16); j++) {
+	  int internal_bit = find_free_bit(block_bitmap[j]);
+	  if (internal_bit != 0) {
+	    internal_bit--;
+	    block_bitmap[j] = modifyBit(block_bitmap[j], internal_bit, 1);
+	    inode_list[inode_num].indirect_blocks[current_indirect] = j*16 + internal_bit;
+	    free_bit_found = true;
+	    break;
+	  }
+	}
+	if (free_bit_found == false) {
+	  printf("No free bit found");
+	  return nbyte - length;
+	}
+	free_bit_found = false;
+	for (int j = 0; j < (DISK_BLOCKS / 16); j++) {
+	  int internal_bit = find_free_bit(block_bitmap[j]);
+	  if (internal_bit != 0) {
+	    internal_bit--;
+	    block_bitmap[j] = modifyBit(block_bitmap[j], internal_bit, 1);
+	    block_read(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
+	    memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
+	    ind_block[0] = j*16 + internal_bit;
+	    memcpy( tmp_buf, &ind_block, BLOCK_SIZE);
+	    block_write(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
+	    free_bit_found = true;
+	    break;
+	  }
+	}
+      }
+    }
+    if (current_block != before_mod) {
+      block_read(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
+      memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
+      memcpy(tmp_buf2, ari_buf + length_copied, length);
+      block_write(ind_block[current_block], tmp_buf2);
+    } else {
+      memcpy(tmp_buf2, ari_buf + length_copied, length);
+      block_write(inode_list[inode_num].direct_blocks[current_block], tmp_buf2);
+    }  
+  } else {
+    memcpy(tmp_buf2 + offset_in_current_block, buf, length);
+    if (start_in_indirect) {
+      block_read(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
+      memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
+      block_write(ind_block[current_block], tmp_buf2);
+    } else {
+      block_write(inode_list[inode_num].direct_blocks[original_block_start], tmp_buf2);
+    }
   }
   
-  int j = 0;
+  
+  
   free(tmp_buf2);
   free(tmp_buf);
   return nbyte - length;
