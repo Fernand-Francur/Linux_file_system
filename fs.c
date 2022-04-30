@@ -578,9 +578,10 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
     }
     
     length = length - space_in_current_block;
-
+    int length_copied = space_in_current_block;
+    current_block = current_block + 1;
+    
     while (length > BLOCK_SIZE) {
-      current_block = current_block + 1;
       int before_mod = current_block;
       if ((current_block > 9) && (!start_in_indirect) ) {
 	current_block = current_block - 10;
@@ -661,7 +662,15 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
       if (current_block != before_mod) {
 	block_read(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
 	memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
+	memcpy(tmp_buf2, buf + length_copied, BLOCK_SIZE);
+	block_write(ind_block[current_block], tmp_buf2);
+      } else {
+	memcpy(tmp_buf2, buf + length_copied, BLOCK_SIZE);
+	block_write(inode_list[inode_num].direct_blocks[current_block], tmp_buf2);
       }
+      length_copied = length_copied + BLOCK_SIZE;
+      current_block++;
+      length = length - BLOCK_SIZE;
     }
     
   } 
