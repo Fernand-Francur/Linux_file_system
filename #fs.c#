@@ -657,6 +657,9 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	    }
 	  }
 	}
+	
+
+
       }
       if (current_block != before_mod) {
 	block_read(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
