@@ -91,14 +91,18 @@ static struct inode inode_list[INODE_NUMBER];
 static god super;
 static bool mounted = false;
 static dir entries[FILE_NUM];
+static pthread_mutex_t lock;
 
 int make_fs(const char *disk_name) {
+  pthread_mutex_lock(&lock);
   if(make_disk(disk_name) != 0) {
     perror("ERROR: Failed to create disk for FS");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
   if(open_disk(disk_name) != 0) {
     perror("ERROR: Disk could not be opened");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
   fd_num_used = 0;
@@ -187,17 +191,20 @@ int make_fs(const char *disk_name) {
   free(tmp_buf);
   free(tmp_buf2);
   close_disk(disk_name);
+  pthread_mutex_unlock(&lock);
   return 0;
 }
 int mount_fs(const char *disk_name) {
-
+  pthread_mutex_lock(&lock);
   if(mounted) {
     perror("ERROR: File system is already mounted");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
 
   if (open_disk(disk_name) == -1) {
     perror("ERROR: Invalid Disk name or disk is already open");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
 
@@ -217,6 +224,7 @@ int mount_fs(const char *disk_name) {
 
   if ((new_sup.block_bitmap_offset != sizeof(new_sup)) ) {
     perror("ERROR: Invalid super block");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
 
@@ -256,17 +264,20 @@ int mount_fs(const char *disk_name) {
   free(tmp_buf2);
   free(buf);
   mounted = true;
+  pthread_mutex_unlock(&lock);
   return 0;
 }
 int umount_fs(const char *disk_name) {
-
+  pthread_mutex_lock(&lock);
   if(!mounted) {
     perror("ERROR: File system is not mounted. Cannot umount");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
   char * tmp_buf = calloc(BLOCK_SIZE, sizeof(char));
   if(block_read(0,tmp_buf) == -1) {
     perror("ERROR: Disk is not open");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
   god new_sup;
@@ -274,6 +285,7 @@ int umount_fs(const char *disk_name) {
   memcpy(&new_sup, tmp_buf, sizeof(new_sup));
   if ((new_sup.block_bitmap_offset != sizeof(new_sup)) ) {
     perror("ERROR: Invalid super block");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
 
@@ -305,11 +317,11 @@ int umount_fs(const char *disk_name) {
   free(tmp_buf2);
   close_disk(disk_name);
   mounted = false;
-
+  pthread_mutex_unlock(&lock);
   return 0;
 }
 int fs_open(const char *name) {
-
+  pthread_mutex_lock(&lock);
   int entry = 1000;
   
   for (int i = 0; i < FILE_NUM; i++) {
@@ -322,6 +334,7 @@ int fs_open(const char *name) {
   }
   if (entry == 1000) {
     perror("ERROR: No such file exists with this name");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
 
@@ -334,6 +347,7 @@ int fs_open(const char *name) {
   }
   if (unused_fd == 33) {
     perror("ERROR: All file file_descripters are busy. Close a file");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
 
@@ -348,12 +362,15 @@ int fs_open(const char *name) {
 } 
 
 int fs_close(int fildes) {
+  pthread_mutex_lock(&lock);
   if ((fildes < 0) || (fildes > 31)) {
     perror("ERROR: File descriptor out of range");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
   if (fd_list[fildes].is_used == false) {
     perror("ERROR: File descriptor is not open");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
   fd_list[fildes].offset = 0;
@@ -363,7 +380,7 @@ int fs_close(int fildes) {
   
   fd_list[fildes].is_used = false;
 
-
+  pthread_mutex_unlock(&lock);
   return 0;
 }
 
@@ -371,8 +388,10 @@ int fs_close(int fildes) {
 
 
 int fs_create(const char *name) {
+  pthread_mutex_lock(&lock);
   if(strlen(name) > 15) {
     perror("ERROR: Name size out of bounds");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
   int unused = 65;
@@ -382,7 +401,8 @@ int fs_create(const char *name) {
     if (entries[i].is_used == true) {
       if(strcmp(entries[i].name, name) == 0) {
         perror("ERROR: Filename already exists");
-        return -1;
+	pthread_mutex_unlock(&lock);
+	return -1;
       }
     } else {
       unused = i;
@@ -391,6 +411,7 @@ int fs_create(const char *name) {
   }
   if (unused == 65) {
     perror("ERROR: Too many files created. Delete a file to make a new one");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
   int unused_inode_in_index = 65;
@@ -409,6 +430,7 @@ int fs_create(const char *name) {
   }
   if (unused_inode_in_index == 65) {
     perror("ERROR: No available inodes. Delete a file");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
 
@@ -417,11 +439,11 @@ int fs_create(const char *name) {
   entries[unused].inode_number = inode_index * 16 + unused_inode_in_index;
   inode_bitmap[inode_index] = modifyBit(inode_bitmap[inode_index], unused_inode_in_index - 1, 1);
   inode_list[entries[unused].inode_number].FT = FILE_TYPE;
-
+  pthread_mutex_unlock(&lock);
   return 0;
 }
 int fs_delete(const char *name) {
-
+  pthread_mutex_lock(&lock);
   int entry = 1000;
 
   for (int i = 0; i < FILE_NUM; i++) {
@@ -434,12 +456,14 @@ int fs_delete(const char *name) {
   }
   if (entry == 1000) {
     perror("ERROR: No such file exists with this name");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
 
   int inode_num = entries[entry].inode_number;
   if (inode_list[inode_num].ref_count != 0) {
     perror("ERROR: Cannot delete, file is open");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
 
@@ -447,6 +471,7 @@ int fs_delete(const char *name) {
     if(fd_list[i].is_used == true) {
       if(fd_list[i].inode_num == inode_num) {
 	perror("ERROR: Cannot delete, file is open");
+	pthread_mutex_unlock(&lock);
 	return -1;
       }
     }
@@ -497,17 +522,21 @@ int fs_delete(const char *name) {
   entries[entry].inode_number = 0;
   
   free(clean);
+  pthread_mutex_unlock(&lock);
   return 0;
 }
 
 
 int fs_read(int fildes, void *buf, size_t nbyte) {
+  pthread_mutex_lock(&lock);
   if ((fildes < 0) || (fildes > 31)) {
     perror("ERROR: File descriptor out of range");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
   if (fd_list[fildes].is_used == false) {
     perror("ERROR: File descriptor is not open");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
 
@@ -617,6 +646,7 @@ int fs_read(int fildes, void *buf, size_t nbyte) {
   }
   free(tmp_buf);
   free(tmp_buf2);
+  pthread_mutex_unlock(&lock);
   return length_read;
 }
 
@@ -625,12 +655,15 @@ int fs_read(int fildes, void *buf, size_t nbyte) {
 
 
 int fs_write(int fildes, void *buf, size_t nbyte) {
+  pthread_mutex_lock(&lock);
   if ((fildes < 0) || (fildes > 31)) {
     perror("ERROR: File descriptor out of range");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
   if (fd_list[fildes].is_used == false) {
     perror("ERROR: File descriptor is not open");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
   char * ari_buf = (char *) buf;
@@ -700,6 +733,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	    inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
 	    inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
+	    pthread_mutex_unlock(&lock);
 	    return nbyte - length;
 	  }
 	  free_bit_found = false;
@@ -722,6 +756,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	    inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
 	    inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
+	    pthread_mutex_unlock(&lock);
 	    return nbyte - length;
 	  }
 	}
@@ -746,6 +781,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	    inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
 	    inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
+	    pthread_mutex_unlock(&lock);
 	    return nbyte - length;
 	  }
 	  free_bit_found = false;
@@ -809,6 +845,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	  fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	  inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
 	  inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
+	  pthread_mutex_unlock(&lock);
 	  return nbyte - length;
 	}
 	free_bit_found = false;
@@ -831,6 +868,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	  fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	  inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
 	  inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
+	  pthread_mutex_unlock(&lock);
 	  return nbyte - length;
 	}
       }
@@ -855,6 +893,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	  fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	  inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
 	  inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
+	  pthread_mutex_unlock(&lock);
 	  return nbyte - length;
 	}
 	free_bit_found = false;
@@ -905,56 +944,71 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
   fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
   inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
   inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
+  pthread_mutex_unlock(&lock);
   return nbyte - length;
 }
 
 
 int fs_get_filesize(int fildes) {
+  pthread_mutex_lock(&lock);
   if ((fildes < 0) || (fildes > 31)) {
     perror("ERROR: File descriptor out of range");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
   if (fd_list[fildes].is_used == false) {
     perror("ERROR: File descriptor is not open");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
-  
+
+  pthread_mutex_unlock(&lock);
   return inode_list[fd_list[fildes].inode_num].file_size;
 }
 
 
 int fs_listfiles(char ***files) {
+  pthread_mutex_lock(&lock);
+
+  pthread_mutex_unlock(&lock);
   return 0;
 }
 int fs_lseek(int fildes, off_t offset) {
+  pthread_mutex_lock(&lock);
   if ((fildes < 0) || (fildes > 31)) {
     perror("ERROR: File descriptor out of range");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
   if (fd_list[fildes].is_used == false) {
     perror("ERROR: File descriptor is not open");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
   int size_of_file = inode_list[fd_list[fildes].inode_num].file_size;
   if ((offset < 0) || (offset > size_of_file)) {
     perror("ERROR: lseek offsets outside of parameters of file");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
 
   fd_list[fildes].offset = offset;
   inode_list[fd_list[fildes].inode_num].offset = offset / BLOCK_SIZE;
-
+  pthread_mutex_unlock(&lock);
   return 0;
 }
 int fs_truncate(int fildes, off_t length) {
+  pthread_mutex_lock(&lock);
   if ((fildes < 0) || (fildes > 31)) {
     perror("ERROR: File descriptor out of range");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
   if (fd_list[fildes].is_used == false) {
     perror("ERROR: File descriptor is not open");
+    pthread_mutex_unlock(&lock);
     return -1;
   }
-
+  pthread_mutex_unlock(&lock);
   return 0;
 }
