@@ -572,24 +572,32 @@ int fs_read(int fildes, void *buf, size_t nbyte) {
 	block_read(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
 	memcpy(&ind_blocks, tmp_buf, BLOCK_SIZE);
 	block_read(ind_blocks[current_block], tmp_buf2);
-	memcpy(ari_buf + length_read, tmp_buf2 + offset_in_current_block, BLOCK_SIZE);
+	memcpy(ari_buf + length_read, tmp_buf2, BLOCK_SIZE);
       } else {
 	block_read(inode_list[inode_num].direct_blocks[current_block], tmp_buf);
-	memcpy(ari_buf + length_read, tmp_buf + offset_in_current_block, BLOCK_SIZE);
+	memcpy(ari_buf + length_read, tmp_buf, BLOCK_SIZE);
       }
       current_block++;
       length_read = length_read + BLOCK_SIZE;
       length = length - BLOCK_SIZE;
+    }
+
+    if ((current_block > 9) && (!start_in_indirect) ) {
+      current_block = current_block - 10;
+      start_in_indirect = true;
+    } else if ((current_block > 1023) && (start_in_indirect)) {
+      current_block = current_block - 1024;
+      current_indirect++;
     }
     
     if (start_in_indirect) {
       block_read(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
       memcpy(&ind_blocks, tmp_buf, BLOCK_SIZE);
       block_read(ind_blocks[current_block], tmp_buf2);
-      memcpy(ari_buf + length_read, tmp_buf2 + offset_in_current_block, length);
+      memcpy(ari_buf + length_read, tmp_buf2, length);
     } else {
       block_read(inode_list[inode_num].direct_blocks[current_block], tmp_buf);
-      memcpy(ari_buf + length_read, tmp_buf + offset_in_current_block, length);
+      memcpy(ari_buf + length_read, tmp_buf, length);
     }
     length_read = length_read + length;
     length = length - length;
