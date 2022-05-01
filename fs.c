@@ -1206,6 +1206,8 @@ int fs_listfiles(char ***files) {
     for (int i = 0; i < count; i++) {
       memcpy(*(files[0] + i ), &entries[i].name, 16);
     }
+    char * empty = NULL;
+    memcpy(*(files[0] + count), empty, 1);
 
     pthread_mutex_unlock(&lock);
     return 0;

@@ -8,7 +8,7 @@ disk.o: disk.c disk.h
 
 tls_test_1.o: tls_test_1.c tls.h
 
-test_disk: test_disk.o disk.o
+test_meg: test_meg.o disk.o
 	$(CC) $(LDFLAGS) $+ $(LOADLIBES) $(LDLIBS) -o $@
 
 bitmap: bitmap.o disk.o
@@ -20,7 +20,7 @@ inodetest: inodetest.o disk.o
 new_test: new_test.o disk.o
 	$(CC) $(LDFLAGS) $+ $(LOADLIBES) $(LDLIBS) -o $@
 
-test_files=  new_test #test_disk bitmap inodetest
+test_files=  new_test test_meg #test_disk bitmap inodetest
 
 # Run the test programs
 check: $(test_files) 
