@@ -47,6 +47,7 @@ typedef struct file_descripter{
   bool is_used;
   int inode_num;
   unsigned int offset;
+  unsigned int block_offset;
 } fd;
 
 struct inode {
@@ -54,7 +55,6 @@ struct inode {
   unsigned int ref_count;
   unsigned int direct_blocks[BLOCK_NUM];
   unsigned int indirect_blocks[BLOCK_NUM];
-  unsigned int offset;
   size_t file_size;
 };
 
@@ -126,7 +126,6 @@ int make_fs(const char *disk_name) {
   for (int i = 0; i < INODE_NUMBER; i++) {
     inode_list[i].FT = UNDEFINED;
     inode_list[i].ref_count = 0;
-    inode_list[i].offset = 0;
     inode_list[i].file_size = 0;
   }
 
@@ -140,7 +139,6 @@ int make_fs(const char *disk_name) {
   inode_list[0].ref_count = 0;
   inode_list[0].direct_blocks[0] = 2;
   inode_list[0].file_size = (64 * sizeof(dir));
-  inode_list[0].offset = 0;
 
   super.root_inode = &inode_list[0];
   super.block_bitmap_offset = sizeof(super);
@@ -254,6 +252,7 @@ int mount_fs(const char *disk_name) {
     fd_list[i].is_used = false;
     fd_list[i].inode_num = -1;
     fd_list[i].offset = 0;
+    fd_list[i].block_offset = 0;
   }
   char * tmp_buf2 = calloc(BLOCK_SIZE, sizeof(char));
   block_read(3, tmp_buf2);
@@ -355,7 +354,7 @@ int fs_open(const char *name) {
   fd_list[unused_fd].is_used = true;
   fd_list[unused_fd].inode_num = entries[entry].inode_number;
   fd_list[unused_fd].offset = 0;
-
+  fd_list[unused_fd].offset = 0;
   inode_list[entries[entry].inode_number].ref_count++;
 
   return unused_fd;
@@ -374,6 +373,7 @@ int fs_close(int fildes) {
     return -1;
   }
   fd_list[fildes].offset = 0;
+  fd_list[fildes].block_offset = 0;
 
   inode_list[fd_list[fildes].inode_num].ref_count--;
   fd_list[fildes].inode_num = -1;
@@ -511,7 +511,6 @@ int fs_delete(const char *name) {
 
   inode_list[inode_num].FT = UNDEFINED;
   inode_list[inode_num].ref_count = 0;
-  inode_list[inode_num].offset = 0;
   inode_list[inode_num].file_size = 0;
   int inode_index = inode_num / 16;
   int bit = inode_num - 16 * inode_index;
@@ -542,7 +541,7 @@ int fs_read(int fildes, void *buf, size_t nbyte) {
 
   char * ari_buf = (char *) buf;
   int inode_num = fd_list[fildes].inode_num;
-  int current_block = inode_list[inode_num].offset;
+  int current_block = fd_list[fildes].block_offset;
   int length = nbyte;
   char * tmp_buf = calloc(BLOCK_SIZE, sizeof(char));
   int length_read = 0;
@@ -644,6 +643,10 @@ int fs_read(int fildes, void *buf, size_t nbyte) {
     }
     length_read = length;
   }
+
+  fd_list[fildes].offset = fd_list[fildes].offset + length_read;
+  fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
+  
   free(tmp_buf);
   free(tmp_buf2);
   pthread_mutex_unlock(&lock);
@@ -668,7 +671,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
   }
   char * ari_buf = (char *) buf;
   int inode_num = fd_list[fildes].inode_num;
-  int current_block = inode_list[inode_num].offset;
+  int current_block = fd_list[fildes].block_offset;
   
   int length = nbyte;
   
@@ -731,7 +734,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	  if (free_bit_found == false) {
 	    printf("No free bit found");
 	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
-	    inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
+	    fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
 	    inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
 	    pthread_mutex_unlock(&lock);
 	    return nbyte - length;
@@ -754,7 +757,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	  if (free_bit_found == false) {
 	    printf("No free bit found");
 	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
-	    inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
+	    fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
 	    inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
 	    pthread_mutex_unlock(&lock);
 	    return nbyte - length;
@@ -779,7 +782,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	  if (free_bit_found == false) {
 	    printf("No free bit found");
 	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
-	    inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
+	    fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
 	    inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
 	    pthread_mutex_unlock(&lock);
 	    return nbyte - length;
@@ -843,7 +846,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	if (free_bit_found == false) {
 	  printf("No free bit found");
 	  fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
-	  inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
+	  fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
 	  inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
 	  pthread_mutex_unlock(&lock);
 	  return nbyte - length;
@@ -866,7 +869,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	if (free_bit_found == false) {
 	  printf("No free bit found");
 	  fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
-	  inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
+	  fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
 	  inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
 	  pthread_mutex_unlock(&lock);
 	  return nbyte - length;
@@ -891,7 +894,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	if (free_bit_found == false) {
 	  printf("No free bit found");
 	  fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
-	  inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
+	  fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
 	  inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
 	  pthread_mutex_unlock(&lock);
 	  return nbyte - length;
@@ -942,7 +945,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
   free(tmp_buf);
 
   fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
-  inode_list[inode_num].offset = fd_list[fildes].offset / BLOCK_SIZE;
+  fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
   inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
   pthread_mutex_unlock(&lock);
   return nbyte - length;
@@ -993,7 +996,7 @@ int fs_lseek(int fildes, off_t offset) {
   }
 
   fd_list[fildes].offset = offset;
-  inode_list[fd_list[fildes].inode_num].offset = offset / BLOCK_SIZE;
+  fd_list[fildes].block_offset = offset / BLOCK_SIZE;
   pthread_mutex_unlock(&lock);
   return 0;
 }
