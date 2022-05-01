@@ -704,7 +704,25 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
       memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
       block_write(ind_block[current_block], tmp_buf2);
     } else {
-      block_write(inode_list[inode_num].direct_blocks[original_block_start], tmp_buf2);
+      if (inode_list[inode_num].direct_blocks[original_block_start] == 0) {
+	bool free_bit_found = false;
+	for (int j = 0; j < (DISK_BLOCKS / 16); j++) {
+	  int internal_bit = find_free_bit(block_bitmap[j]);
+	  if (internal_bit != 0) {
+	    internal_bit--;
+	    block_bitmap[j] = modifyBit(block_bitmap[j], internal_bit, 1);
+	    inode_list[inode_num].direct_blocks[original_block_start] = j*16 + internal_bit;
+	    free_bit_found = true;
+	    break;
+	  }
+	}
+	if ( free_bit_found == false ) {
+	  return nbyte - length;
+	}
+      } else {
+	block_write(inode_list[inode_num].direct_blocks[original_block_start], tmp_buf2);
+      }
+
     }
     
     length = length - space_in_current_block;
@@ -799,11 +817,42 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	      break;
 	    }
 	  }
+	  if (free_bit_found == false) {
+	    printf("No free bit found");
+	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
+	    fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
+	    inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
+	    pthread_mutex_unlock(&lock);
+	    return nbyte - length;
+	  }
 	}
       }
       if (current_block != before_mod) {
 	block_read(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
 	memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
+	if (ind_block[current_block] == 0) {
+	  bool free_bit_found = false;
+	  for (int j = 0; j < (DISK_BLOCKS / 16); j++) {
+	    int internal_bit = find_free_bit(block_bitmap[j]);
+	    if (internal_bit != 0) {
+	      internal_bit--;
+	      block_bitmap[j] = modifyBit(block_bitmap[j], internal_bit, 1);
+	      ind_block[current_block] = j*16 + internal_bit;
+	      memcpy( tmp_buf, &ind_block, BLOCK_SIZE);
+	      block_write(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
+	      free_bit_found = true;
+	      break;
+	    }
+	  }
+	  if (free_bit_found == false) {
+	    printf("No free bit found");
+	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
+	    fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
+	    inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
+	    pthread_mutex_unlock(&lock);
+	    return nbyte - length;
+	  }
+	}
 	memcpy(tmp_buf2, ari_buf + length_copied, BLOCK_SIZE);
 	block_write(ind_block[current_block], tmp_buf2);
       } else {
@@ -811,6 +860,29 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	if (start_in_indirect) {
 	  block_read(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
 	  memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
+	  if (ind_block[current_block] == 0) {
+	    bool free_bit_found = false;
+	    for (int j = 0; j < (DISK_BLOCKS / 16); j++) {
+	      int internal_bit = find_free_bit(block_bitmap[j]);
+	      if (internal_bit != 0) {
+		internal_bit--;
+		block_bitmap[j] = modifyBit(block_bitmap[j], internal_bit, 1);
+		ind_block[current_block] = j*16 + internal_bit;
+		memcpy( tmp_buf, &ind_block, BLOCK_SIZE);
+		block_write(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
+		free_bit_found = true;
+		break;
+	      }
+	    }
+	    if (free_bit_found == false) {
+	      printf("No free bit found");
+	      fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
+	      fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
+	      inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
+	      pthread_mutex_unlock(&lock);
+	      return nbyte - length;
+	    }
+	  }
 	  block_write(ind_block[current_block], tmp_buf2);
 	} else {
 	  block_write(inode_list[inode_num].direct_blocks[current_block], tmp_buf2);

@@ -53,12 +53,33 @@ int main() {
     fs_create(file_name15);
     fs_create(file_name16);
     int fd = fs_open(file_name2);
+
+    char latin[1001] = "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat massa quis enim. Donec pede justo, fringilla vel, aliquet nec, vulputate eget, arcu. In enim justo, rhoncus ut, imperdiet a, venenatis vitae, justo. Nullam dictum felis eu pede mollis pretium. Integer tincidunt. Cras dapibus. Vivamus elementum semper nisi. Aenean vulputate eleifend tellus. Aenean leo ligula, porttitor eu, consequat vitae, eleifend ac, enim. Aliquam lorem ante, dapibus in, viverra quis, feugiat a, tellus. Phasellus viverra nulla ut metus varius laoreet. Quisque rutrum. Aenean imperdiet. Etiam ultricies nisi vel augue. Curabitur ullamcorper ultricies nisi. Nam eget dui. Etiam rhoncus. Maecenas tempus, tellus eget condimentum rhoncus, sem quam semper libero, sit amet adipiscing sem neque sed ipsum. N";
+    char * copy_write = calloc(1000, sizeof(char));
+    memcpy(copy_write, &latin, 1000);
+    fs_write(fd, copy_write, 1000);
+
+    char * copy_read = calloc(1000, sizeof(char));
+    fs_lseek(fd, 500);
+
+    char * two_write = calloc(2, sizeof(char));
+    char two[3] = "99";
+    memcpy(two_write, &two, 2);
+    fs_write(fd, two_write, 2);
+
+    fs_lseek(fd, 0);
+    fs_read(fd, copy_read, 1000);
+    char latin_copy[1001];
+    memcpy(&latin_copy, copy_read, 1000);
+
+    printf("%s\n", latin_copy);
+
+
     fs_close(fd);
-    fs_close(fd);
-    fs_create(file_name1);
     umount_fs(name);
-
-
+    free(two_write);
+    free(copy_write);
+    free(copy_read);
     printf("end\n");
   return 0;
 }
