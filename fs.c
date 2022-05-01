@@ -153,9 +153,6 @@ int make_fs(const char *disk_name) {
   block_bitmap[0] = modifyBit(block_bitmap[0], 0, 1);
   block_bitmap[0] = modifyBit(block_bitmap[0], 1, 1);
   block_bitmap[0] = modifyBit(block_bitmap[0], 2, 1);
-  block_bitmap[0] = modifyBit(block_bitmap[0], 3, 1);
-  block_bitmap[0] = modifyBit(block_bitmap[0], 4, 1);
-
 
   char * buf = calloc(super.data_blocks_offset, sizeof(char));
   memcpy(buf, &super, super.block_bitmap_offset);
@@ -255,7 +252,7 @@ int mount_fs(const char *disk_name) {
     fd_list[i].block_offset = 0;
   }
   char * tmp_buf2 = calloc(BLOCK_SIZE, sizeof(char));
-  block_read(3, tmp_buf2);
+  block_read(2, tmp_buf2);
 
   memcpy(&entries, tmp_buf2, sizeof(entries));
 
