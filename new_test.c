@@ -72,11 +72,15 @@ int main() {
     char latin_copy[1001];
     memcpy(&latin_copy, copy_read, 1000);
 
-    printf("%s\n", latin_copy);
+    //printf("%s\n", latin_copy);
 
 
     fs_close(fd);
     umount_fs(name);
+
+    mount_fs(name);
+    umount_fs(name);
+    
     free(two_write);
     free(copy_write);
     free(copy_read);
