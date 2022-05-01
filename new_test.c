@@ -9,7 +9,7 @@
 #include "disk.h"
 
 int main() {
-    char name[10] = "cursed";
+    char name[10] = "working";
     char file_name1[16] = "fudgefile";
     char file_name2[16] = "dyinginside";
     char file_name3[16] = "crying";
