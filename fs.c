@@ -12,7 +12,7 @@
 
 #define SUPER_BLOCK 0
 #define STRING_LEN 16
-#define INODE_NUMBER 64
+#define INODE_NUMBER 80
 #define FILE_DESCRIPTOR 32
 #define FILE_NUM 64
 #define BLOCK_NUM 10
@@ -1204,7 +1204,7 @@ int fs_listfiles(char ***files) {
     }
 
     for (int i = 0; i < count; i++) {
-      memcpy(*files[0] + 16 * i * sizeof(char), &entries[i].name, 16);
+      memcpy(*(files[0] + i ), &entries[i].name, 16);
     }
 
     pthread_mutex_unlock(&lock);
