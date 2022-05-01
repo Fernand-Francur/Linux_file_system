@@ -969,13 +969,23 @@ int fs_get_filesize(int fildes) {
   return inode_list[fd_list[fildes].inode_num].file_size;
 }
 
-
 int fs_listfiles(char ***files) {
-  pthread_mutex_lock(&lock);
+    pthread_mutex_lock(&lock);
+    int count = 0;
+    for (int i = 0; i < FILE_NUM; i++) {
+      if(entries[i].is_used == true) {
+	count++;
+      }
+    }
 
-  pthread_mutex_unlock(&lock);
-  return 0;
+    for (int i = 0; i < count; i++) {
+      memcpy(*files[0] + 16 * i * sizeof(char), &entries[i].name, 16);
+    }
+
+    pthread_mutex_unlock(&lock);
+    return 0;
 }
+
 int fs_lseek(int fildes, off_t offset) {
   pthread_mutex_lock(&lock);
   if ((fildes < 0) || (fildes > 31)) {
