@@ -9,7 +9,7 @@
 #include "disk.h"
 
 int main() {
-  char name[10] = "Megabyte6";
+  char name[10] = "Megabyte9";
   char filename_meg[16] = "Mega";
   char place_holder_file[16] = "Other";
 
@@ -36,11 +36,18 @@ int main() {
   for (int i = 0; i < (1024 * 40); i++) {
     fs_write(fd_meg, meg, 1024);
   }
+
+  char * read_40 = calloc(1024 * 1024 * 40, sizeof(char));
+
+  fs_lseek(fd_meg, 0);
   
+  int how_much = fs_read(fd_meg, read_40, 1024 * 1024 * 40);
+  printf("%d\n" , how_much);
   fs_close(fd_meg);
   fs_close(fd_other);
 
   umount_fs(name);
+  free(read_40);
   free(meg);
   free(extra);
 

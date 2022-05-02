@@ -566,8 +566,8 @@ int fs_read(int fildes, void *buf, size_t nbyte) {
   }
   
   
-  if (current_block > 9) {
-    current_block = current_block - 10;
+  if (current_block > (BLOCK_NUM-1)) {
+    current_block = current_block - BLOCK_NUM;
     start_in_indirect = true;
     while (current_block > 1023) {
       current_block = current_block - 1024;
@@ -591,8 +591,8 @@ int fs_read(int fildes, void *buf, size_t nbyte) {
     current_block++;
 
     while( length > BLOCK_SIZE ) {
-      if ((current_block > 9) && (!start_in_indirect) ) {
-	current_block = current_block - 10;
+      if ((current_block > (BLOCK_NUM-1)) && (!start_in_indirect) ) {
+	current_block = current_block - BLOCK_NUM;
 	start_in_indirect = true;
       } else if ((current_block > 1023) && (start_in_indirect)) {
 	current_block = current_block - 1024;
@@ -613,8 +613,8 @@ int fs_read(int fildes, void *buf, size_t nbyte) {
       length = length - BLOCK_SIZE;
     }
 
-    if ((current_block > 9) && (!start_in_indirect) ) {
-      current_block = current_block - 10;
+    if ((current_block > (BLOCK_NUM-1)) && (!start_in_indirect) ) {
+      current_block = current_block - BLOCK_NUM;
       start_in_indirect = true;
     } else if ((current_block > 1023) && (start_in_indirect)) {
       current_block = current_block - 1024;
