@@ -9,7 +9,7 @@
 #include "disk.h"
 
 int main() {
-  char name[10] = "Megabytee";
+  char name[10] = "Megabyteg";
   char filename_meg[16] = "Mega";
   char place_holder_file[16] = "Other";
 
@@ -58,6 +58,10 @@ int main() {
   printf("%d\n" , how_much);
   fs_close(fd_meg);
   }
+
+  fd_meg = fs_open(filename_meg);
+  fs_truncate(fd_meg, 10000);
+  fs_close(fd_meg);
 
   fs_delete(filename_meg);
   fs_close(fd_other);

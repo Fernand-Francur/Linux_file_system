@@ -1427,6 +1427,125 @@ int fs_truncate(int fildes, off_t length) {
     pthread_mutex_unlock(&lock);
     return -1;
   }
+  int inode_num = fd_list[fildes].inode_num;
+  if (inode_list[inode_num].file_size < length) {
+    perror("ERROR: Truncating adds length to file");
+    pthread_mutex_unlock(&lock);
+    return -1;
+  }
+  bool start_in_indirect = false;
+  int current_block = length / BLOCK_SIZE;
+  int current_indirect = 0;
+  if (current_block > (BLOCK_NUM -1)) {
+    current_block = current_block - BLOCK_NUM;
+    start_in_indirect = true;
+    while (current_block > 1023) {
+      current_block = current_block - 1024;
+      current_indirect++;
+    }
+  }
+  int offset_in_current_block = length;
+  
+  
+  while (offset_in_current_block > 4095) {
+    offset_in_current_block = offset_in_current_block - 4096;
+  }
+
+  int space_in_current_block = BLOCK_SIZE - offset_in_current_block;
+  
+  if (fd_list[fildes].offset > length) {
+    fs_lseek(fildes, length);
+  }
+
+  char * clean = calloc(BLOCK_SIZE, sizeof(char));
+  
+  if (start_in_indirect) {
+    char * tmp_buf = calloc(BLOCK_SIZE, sizeof(char));
+    int ind_block[BLOCK_SIZE / sizeof(int)];
+    block_read(inode_list[inode_num].indirect_blocks[current_indirect], tmp_buf);
+    memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
+
+    char * original = calloc(BLOCK_SIZE, sizeof(char));
+
+    block_read(ind_block[current_block], original);
+    memcpy(original + offset_in_current_block, clean, space_in_current_block);
+    block_write(ind_block[current_block], original);
+    
+    free(original);
+    
+    for( int j = current_block + 1; j < (BLOCK_SIZE / sizeof(int)); j++) {
+      if(ind_block[j] != 0) {
+	block_write(ind_block[j], clean);
+	int bitmap_index = ind_block[j] / 16;
+	int bit = ind_block[j] - 16 * bitmap_index;
+	block_bitmap[bitmap_index] = modifyBit(block_bitmap[bitmap_index], bit, 0);
+      }
+    }
+    free(tmp_buf);
+    
+
+    for(int i = current_indirect + 1; i < BLOCK_NUM; i++) {
+      if (inode_list[inode_num].indirect_blocks[i] != 0) {
+	char * tmp_buf = calloc(BLOCK_SIZE, sizeof(char));
+	int ind_block[BLOCK_SIZE / sizeof(int)];
+	block_read(inode_list[inode_num].indirect_blocks[i], tmp_buf);
+	memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
+	for( int j = 0; j < (BLOCK_SIZE / sizeof(int)); j++) {
+	  if(ind_block[j] != 0) {
+	    block_write(ind_block[j], clean);
+	    int bitmap_index = ind_block[j] / 16;
+	    int bit = ind_block[j] - 16 * bitmap_index;
+	    block_bitmap[bitmap_index] = modifyBit(block_bitmap[bitmap_index], bit, 0);
+	  }
+	}
+	free(tmp_buf);
+	block_write(inode_list[inode_num].indirect_blocks[i], clean);
+	inode_list[inode_num].indirect_blocks[i] = 0;
+      }
+    }
+    
+  } else {
+
+    char * original = calloc(BLOCK_SIZE, sizeof(char));
+
+    block_read(inode_list[inode_num].direct_blocks[current_block], original);
+    memcpy(original + offset_in_current_block, clean, space_in_current_block);
+    block_write(inode_list[inode_num].direct_blocks[current_block], original);
+
+    free(original);
+    
+    for(int i = 0; i < BLOCK_NUM; i++) {
+      if (inode_list[inode_num].indirect_blocks[i] != 0) {
+	char * tmp_buf = calloc(BLOCK_SIZE, sizeof(char));
+	int ind_block[BLOCK_SIZE / sizeof(int)];
+	block_read(inode_list[inode_num].indirect_blocks[i], tmp_buf);
+	memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
+	for( int j = 0; j < (BLOCK_SIZE / sizeof(int)); j++) {
+	  if(ind_block[j] != 0) {
+	    block_write(ind_block[j], clean);
+	    int bitmap_index = ind_block[j] / 16;
+	    int bit = ind_block[j] - 16 * bitmap_index;
+	    block_bitmap[bitmap_index] = modifyBit(block_bitmap[bitmap_index], bit, 0);
+	  }
+	}
+	free(tmp_buf);
+	block_write(inode_list[inode_num].indirect_blocks[i], clean);
+	inode_list[inode_num].indirect_blocks[i] = 0;
+      }
+    }
+    
+    for(int i = current_block + 1; i < BLOCK_NUM; i++) {
+      if (inode_list[inode_num].direct_blocks[i] != 0) {
+	block_write(inode_list[inode_num].direct_blocks[i], clean);
+	int bitmap_index = inode_list[inode_num].direct_blocks[i] / 16;
+	int bit = inode_list[inode_num].direct_blocks[i] - 16 * bitmap_index;
+	block_bitmap[bitmap_index] = modifyBit(block_bitmap[bitmap_index], bit, 0);
+	inode_list[inode_num].direct_blocks[i] = 0;
+      }
+    }
+  }
+  inode_list[inode_num].file_size = length;
+  free(clean);
   pthread_mutex_unlock(&lock);
   return 0;
 }
