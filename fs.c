@@ -73,10 +73,10 @@ int calc_off(unsigned int offset) {
 }
 
 int find_free_bit(uint16_t n) {
-  int free_bit = 0;
+  int free_bit = 99;
   for (int i = 1; i < 17; i++) {
-    if (bit_ext(n, 1, i+1) == 0) {
-      free_bit = i;
+    if (bit_ext(n, 1, i) == 0) {
+      free_bit = i-1;
       break;
     }
   }
@@ -714,8 +714,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	bool free_bit_found = false;
 	for (int j = 0; j < (DISK_BLOCKS / 16); j++) {
 	  int internal_bit = find_free_bit(block_bitmap[j]);
-	  if (internal_bit != 0) {
-	    internal_bit--;
+	  if (internal_bit == 99) {
 	    block_bitmap[j] = modifyBit(block_bitmap[j], internal_bit, 1);
 	    inode_list[inode_num].direct_blocks[original_block_start] = j*16 + internal_bit;
 	    free_bit_found = true;
@@ -1130,7 +1129,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	bool free_bit_found = false;
 	for (int j = 0; j < (DISK_BLOCKS / 16); j++) {
 	  int internal_bit = find_free_bit(block_bitmap[j]);
-	  if (internal_bit != 0) {
+	  if (internal_bit != 99) {
 	    block_bitmap[j] = modifyBit(block_bitmap[j], internal_bit, 1);
 	    inode_list[inode_num].indirect_blocks[current_indirect] = j*16 + internal_bit;
 	    free_bit_found = true;
@@ -1157,7 +1156,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	bool free_bit_found = false;
 	for (int j = 0; j < (DISK_BLOCKS / 16); j++) {
 	  int internal_bit = find_free_bit(block_bitmap[j]);
-	  if (internal_bit != 0) {
+	  if (internal_bit != 99) {
 	    block_bitmap[j] = modifyBit(block_bitmap[j], internal_bit, 1);
 	    ind_block[current_block] = j*16 + internal_bit;
 	    memcpy( tmp_buf, &ind_block, BLOCK_SIZE);
@@ -1188,7 +1187,7 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	bool free_bit_found = false;
 	for (int j = 0; j < (DISK_BLOCKS / 16); j++) {
 	  int internal_bit = find_free_bit(block_bitmap[j]);
-	  if (internal_bit != 0) {
+	  if (internal_bit != 99) {
 	    block_bitmap[j] = modifyBit(block_bitmap[j], internal_bit, 1);
 	    inode_list[inode_num].direct_blocks[current_block] = j*16 + internal_bit;
 	    free_bit_found = true;
