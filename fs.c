@@ -277,8 +277,8 @@ int umount_fs(const char *disk_name) {
   char * tmp_buf = calloc(BLOCK_SIZE, sizeof(char));
   if(block_read(0,tmp_buf) == -1) {
     perror("ERROR: Disk is not open");
-    pthread_mutex_unlock(&lock);
     free(tmp_buf);
+    pthread_mutex_unlock(&lock);
     return -1;
   }
   god new_sup;
@@ -359,7 +359,7 @@ int fs_open(const char *name) {
   fd_list[unused_fd].offset = 0;
   fd_list[unused_fd].offset = 0;
   inode_list[entries[entry].inode_number].ref_count++;
-
+  pthread_mutex_unlock(&lock);
   return unused_fd;
 } 
 
@@ -749,10 +749,10 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	  fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	  fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
 	  inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
-	  pthread_mutex_unlock(&lock);
 	  free(tmp_buf);
 	  free(tmp_buf2);
 	  free(original);
+	  pthread_mutex_unlock(&lock);
 	  return nbyte - length;
 	}
       }
@@ -773,10 +773,10 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	  }
 	}
 	if ( free_bit_found == false ) {
-	  pthread_mutex_unlock(&lock);
 	  free(tmp_buf);
 	  free(tmp_buf2);
 	  free(original);
+	  pthread_mutex_unlock(&lock);
 	  return nbyte - length;
 	}
       }
@@ -843,10 +843,10 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	    fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
 	    inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
-	    pthread_mutex_unlock(&lock);
 	    free(tmp_buf);
 	    free(tmp_buf2);
 	    free(original);
+	    pthread_mutex_unlock(&lock);
 	    return nbyte - length;
 	  }
 	}
@@ -871,10 +871,10 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	    fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
 	    inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
-	    pthread_mutex_unlock(&lock);
 	    free(tmp_buf);
 	    free(tmp_buf2);
 	    free(original);
+	    pthread_mutex_unlock(&lock);
 	    return nbyte - length;
 	  }
 	}
@@ -902,10 +902,10 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	    fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
 	    inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
-	    pthread_mutex_unlock(&lock);
 	    free(tmp_buf);
 	    free(tmp_buf2);
 	    free(original);
+	    pthread_mutex_unlock(&lock);
 	    return nbyte - length;
 	  }
 	}
@@ -968,10 +968,10 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	      fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	      fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
 	      inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
-	      pthread_mutex_unlock(&lock);
 	      free(tmp_buf);
 	      free(tmp_buf2);
 	      free(original);
+	      pthread_mutex_unlock(&lock);
 	      return nbyte - length;
 	    }
 	  }
@@ -1116,10 +1116,10 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	  fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	  fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
 	  inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
-	  pthread_mutex_unlock(&lock);
 	  free(tmp_buf);
 	  free(tmp_buf2);
 	  free(original);
+	  pthread_mutex_unlock(&lock);
 	  return nbyte - length;
 	}
       }
@@ -1204,10 +1204,10 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	    fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	    fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
 	    inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
-	    pthread_mutex_unlock(&lock);
 	    free(tmp_buf);
 	    free(tmp_buf2);
 	    free(original);
+	    pthread_mutex_unlock(&lock);
 	    return nbyte - length;
 	  }
 	}
@@ -1298,10 +1298,10 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 	  fd_list[fildes].offset = fd_list[fildes].offset + nbyte - length;
 	  fd_list[fildes].block_offset = fd_list[fildes].offset / BLOCK_SIZE;
 	  inode_list[inode_num].file_size = inode_list[inode_num].file_size + nbyte - length;
-	  pthread_mutex_unlock(&lock);
 	  free(tmp_buf);
 	  free(tmp_buf2);
 	  free(original);
+	  pthread_mutex_unlock(&lock);
 	  return nbyte - length;
 	}
       }
