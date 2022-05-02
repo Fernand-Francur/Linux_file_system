@@ -154,6 +154,7 @@ int make_fs(const char *disk_name) {
   block_bitmap[0] = modifyBit(block_bitmap[0], 1, 1);
   block_bitmap[0] = modifyBit(block_bitmap[0], 2, 1);
   block_bitmap[0] = modifyBit(block_bitmap[0], 3, 1);
+  //block_bitmap[0] = modifyBit(block_bitmap[0], 4, 1);
   char * buf = calloc(super.data_blocks_offset, sizeof(char));
   memcpy(buf, &super, super.block_bitmap_offset);
   memcpy(buf + (super.block_bitmap_offset), &block_bitmap, super.block_bitmap_size);

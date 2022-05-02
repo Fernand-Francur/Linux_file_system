@@ -9,7 +9,7 @@
 #include "disk.h"
 
 int main() {
-  char name[10] = "Megabyte4";
+  char name[10] = "Megabyte5";
   char filename_meg[16] = "Mega";
   char place_holder_file[16] = "Other";
 
@@ -33,7 +33,7 @@ int main() {
 
   fs_write(fd_other, extra, 99);
   
-  for (int i = 0; i < 1025; i++) {
+  for (int i = 0; i < (1024 * 40); i++) {
     fs_write(fd_meg, meg, 1024);
   }
   
