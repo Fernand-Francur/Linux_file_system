@@ -9,7 +9,7 @@
 #include "disk.h"
 
 int main() {
-  char name[10] = "Megabyte5";
+  char name[10] = "Megabyte6";
   char filename_meg[16] = "Mega";
   char place_holder_file[16] = "Other";
 

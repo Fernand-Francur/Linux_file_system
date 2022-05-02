@@ -15,7 +15,7 @@
 #define INODE_NUMBER 80
 #define FILE_DESCRIPTOR 32
 #define FILE_NUM 64
-#define BLOCK_NUM 10
+#define BLOCK_NUM 15
 #define BLOCK_SIZE 4096
 
 enum file_type {
@@ -154,7 +154,10 @@ int make_fs(const char *disk_name) {
   block_bitmap[0] = modifyBit(block_bitmap[0], 1, 1);
   block_bitmap[0] = modifyBit(block_bitmap[0], 2, 1);
   block_bitmap[0] = modifyBit(block_bitmap[0], 3, 1);
-  //block_bitmap[0] = modifyBit(block_bitmap[0], 4, 1);
+  block_bitmap[0] = modifyBit(block_bitmap[0], 4, 1);
+  block_bitmap[0] = modifyBit(block_bitmap[0], 5, 1);
+  block_bitmap[0] = modifyBit(block_bitmap[0], 6, 1);
+
   char * buf = calloc(super.data_blocks_offset, sizeof(char));
   memcpy(buf, &super, super.block_bitmap_offset);
   memcpy(buf + (super.block_bitmap_offset), &block_bitmap, super.block_bitmap_size);
@@ -253,7 +256,7 @@ int mount_fs(const char *disk_name) {
     fd_list[i].block_offset = 0;
   }
   char * tmp_buf2 = calloc(BLOCK_SIZE, sizeof(char));
-  block_read(3, tmp_buf2);
+  block_read(5, tmp_buf2);
 
   memcpy(&entries, tmp_buf2, sizeof(entries));
 
@@ -690,8 +693,8 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
   int ind_block[BLOCK_SIZE / sizeof(int)];
   char * tmp_buf2 = calloc(BLOCK_SIZE, sizeof(char));
   char * original = calloc(BLOCK_SIZE, sizeof(char));
-  if (current_block > 9) {
-    current_block = current_block - 10;
+  if (current_block > (BLOCK_NUM-1)) {
+    current_block = current_block - BLOCK_NUM;
     start_in_indirect = true;
     while (current_block > 1023) {
       current_block = current_block - 1024;
@@ -791,8 +794,8 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
     
     while (length > BLOCK_SIZE) {
       int before_mod = current_block;
-      if ((current_block > 9) && (!start_in_indirect) ) {
-	current_block = current_block - 10;
+      if ((current_block > (BLOCK_NUM-1)) && (!start_in_indirect) ) {
+	current_block = current_block - BLOCK_NUM;
 	start_in_indirect = true;
 	if (inode_list[inode_num].indirect_blocks[current_indirect] == 0) {
 	  bool free_bit_found = false;
@@ -1011,8 +1014,8 @@ int fs_write(int fildes, void *buf, size_t nbyte) {
 
 
     int before_mod = current_block;
-    if ((current_block > 9) && (!start_in_indirect) ) {
-      current_block = current_block - 10;
+    if ((current_block > (BLOCK_NUM-1)) && (!start_in_indirect) ) {
+      current_block = current_block - BLOCK_NUM;
       start_in_indirect = true;
       if (inode_list[inode_num].indirect_blocks[current_indirect] == 0) {
 	bool free_bit_found = false;
