@@ -9,7 +9,7 @@
 #include "disk.h"
 
 int main() {
-  char name[10] = "Megabytea";
+  char name[10] = "Megabytee";
   char filename_meg[16] = "Mega";
   char place_holder_file[16] = "Other";
 
@@ -33,17 +33,33 @@ int main() {
 
   fs_write(fd_other, extra, 99);
   
-  for (int i = 0; i < (1024 * 40); i++) {
+  for (int i = 0; i < (1024); i++) {
     fs_write(fd_meg, meg, 1024);
   }
 
-  char * read_40 = calloc(1024 * 1024 * 40, sizeof(char));
+  char * read_40 = calloc(1024 * 1024, sizeof(char));
 
   fs_lseek(fd_meg, 0);
   
-  int how_much = fs_read(fd_meg, read_40, 1024 * 1024 * 40);
+  int how_much = fs_read(fd_meg, read_40, 1024 * 1024);
   printf("%d\n" , how_much);
   fs_close(fd_meg);
+
+  for (int j = 0; j < 10; j++) {
+  fs_delete(filename_meg);
+
+  fs_create(filename_meg);
+  fd_meg = fs_open(filename_meg);
+  for (int i = 0; i < (1024); i++) {
+    fs_write(fd_meg, meg, 1024);
+  }
+  fs_lseek(fd_meg, 0);
+  how_much = fs_read(fd_meg, read_40, 1024 * 1024);
+  printf("%d\n" , how_much);
+  fs_close(fd_meg);
+  }
+
+  fs_delete(filename_meg);
   fs_close(fd_other);
 
   umount_fs(name);

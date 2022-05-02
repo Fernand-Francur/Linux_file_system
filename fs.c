@@ -422,7 +422,7 @@ int fs_create(const char *name) {
   for (int i = 0; i < (INODE_NUMBER / 16); i++) {
     for(int j = 1; j < 17; j++) {
       if (bit_ext(inode_bitmap[i],1,j) == 0) {
-        unused_inode_in_index = j;
+        unused_inode_in_index = j-1;
         inode_index = i;
         break;
       }
@@ -440,7 +440,7 @@ int fs_create(const char *name) {
   strncpy(entries[unused].name,name, strlen(name) + 1);;
   entries[unused].is_used = true;
   entries[unused].inode_number = inode_index * 16 + unused_inode_in_index;
-  inode_bitmap[inode_index] = modifyBit(inode_bitmap[inode_index], unused_inode_in_index - 1, 1);
+  inode_bitmap[inode_index] = modifyBit(inode_bitmap[inode_index], unused_inode_in_index, 1);
   inode_list[entries[unused].inode_number].FT = FILE_TYPE;
   pthread_mutex_unlock(&lock);
   return 0;
@@ -464,12 +464,6 @@ int fs_delete(const char *name) {
   }
 
   int inode_num = entries[entry].inode_number;
-  if (inode_list[inode_num].ref_count != 0) {
-    perror("ERROR: Cannot delete, file is open");
-    pthread_mutex_unlock(&lock);
-    return -1;
-  }
-
   for(int i = 0; i < FILE_DESCRIPTOR; i++) {
     if(fd_list[i].is_used == true) {
       if(fd_list[i].inode_num == inode_num) {
@@ -490,21 +484,26 @@ int fs_delete(const char *name) {
       memcpy(&ind_block, tmp_buf, BLOCK_SIZE);
       for( int j = 0; j < (BLOCK_SIZE / sizeof(int)); j++) {
 	if(ind_block[j] != 0) {
-	  block_write(j, clean);
+	  block_write(ind_block[j], clean);
 	  int bitmap_index = ind_block[j] / 16;
-	  int bit = ind_block[j] - 16 * bitmap_index;
+	  int bit = ind_block[j] - (16 * bitmap_index);
 	  block_bitmap[bitmap_index] = modifyBit(block_bitmap[bitmap_index], bit, 0);
+	  ind_block[j] = 0;
 	}
       }
       free(tmp_buf);
       block_write(inode_list[inode_num].indirect_blocks[i], clean);
+      int bitmap_index = inode_list[inode_num].indirect_blocks[i] / 16;
+      int bit = inode_list[inode_num].indirect_blocks[i] - (16 * bitmap_index);
+      block_bitmap[bitmap_index] = modifyBit(block_bitmap[bitmap_index], bit, 0);
+
       inode_list[inode_num].indirect_blocks[i] = 0;
     }
   }
 
   for(int i = 0; i < BLOCK_NUM; i++) {
     if (inode_list[inode_num].direct_blocks[i] != 0) {
-      block_write(i, clean);
+      block_write(inode_list[inode_num].direct_blocks[i], clean);
       int bitmap_index = inode_list[inode_num].direct_blocks[i] / 16;
       int bit = inode_list[inode_num].direct_blocks[i] - 16 * bitmap_index;
       block_bitmap[bitmap_index] = modifyBit(block_bitmap[bitmap_index], bit, 0);
