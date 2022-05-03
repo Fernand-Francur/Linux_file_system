@@ -9,7 +9,7 @@
 #include "disk.h"
 
 int main() {
-    char name[10] = "corr";
+    char name[10] = "corrupt";
     char file_name1[16] = "fudgefile";
     char file_name2[16] = "dyinginside";
     char file_name3[16] = "crying";
@@ -170,10 +170,12 @@ int main() {
     memcpy(&latin_copy, copy_read, 1000);
 
     printf("%s\n", latin_copy);
-    char **files = calloc(64, sizeof(char *));
-    for(int i = 0; i < 64; i++) {
+    char **files;
+    //char **files = calloc(64, sizeof(char *));
+    /*for(int i = 0; i < 64; i++) {
       files[i] = calloc(16, sizeof(char));
     }
+    */
     fs_listfiles(&files);
     for(int i = 0; i < 64; i++) {
       printf("%s\n", files[i]);

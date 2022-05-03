@@ -1380,13 +1380,20 @@ int fs_listfiles(char ***files) {
 	count++;
       }
     }
-
+    /*
     for (int i = 0; i < count; i++) {
       memcpy(*(files[0] + i ), &entries[i].name, 16);
     }
     char * empty = NULL;
     memcpy(*(files[0] + count), empty, 1);
-
+    */
+    *files = calloc(count, sizeof(char*));
+    for (int i = 0; i < count; i++) {
+      *(files[0] + i) = calloc(16, sizeof(char));
+      memcpy(*(files[0] + i ), &entries[i].name, 16);
+    }
+    *(files[0] + count) = NULL;
+    
     pthread_mutex_unlock(&lock);
     return 0;
 }
