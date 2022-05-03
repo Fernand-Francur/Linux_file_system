@@ -14,13 +14,13 @@ test_meg: test_meg.o disk.o
 bitmap: bitmap.o disk.o
 	$(CC) $(LDFLAGS) $+ $(LOADLIBES) $(LDLIBS) -o $@
 
-inodetest: inodetest.o disk.o
+test_process: test_process.o disk.o
 	$(CC) $(LDFLAGS) $+ $(LOADLIBES) $(LDLIBS) -o $@
 
 new_test: new_test.o disk.o
 	$(CC) $(LDFLAGS) $+ $(LOADLIBES) $(LDLIBS) -o $@
 
-test_files=  new_test test_meg #test_disk bitmap inodetest
+test_files=  new_test test_meg test_process #test_disk bitmap inodetest
 
 # Run the test programs
 check: $(test_files) 
